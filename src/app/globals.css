@@ -1,0 +1,36 @@
+@import "tailwindcss";
+
+@theme {
+  --color-brand-bg: #FAF7FF;
+  --color-brand-surface: #F3EEF9;
+  --color-brand-dark: #2D1B69;
+  --color-brand-violet: #7C3AED;
+  --color-brand-gold: #C9A84C;
+  --color-brand-border: #E0D5F0;
+
+  --font-heading: "Cormorant Garamond", Georgia, serif;
+  --font-body: "Inter", system-ui, sans-serif;
+}
+
+body {
+  font-family: var(--font-body);
+  background: var(--color-brand-bg);
+  color: #1b1b1b;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Smooth step transitions */
+.step-enter {
+  opacity: 0;
+  transform: translateY(8px);
+}
+.step-active {
+  opacity: 1;
+  transform: translateY(0);
+  transition: opacity 220ms ease, transform 220ms ease;
+}
+.step-exit {
+  opacity: 0;
+  transform: translateY(-8px);
+  transition: opacity 220ms ease, transform 220ms ease;
+}

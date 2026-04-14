@@ -18,9 +18,9 @@ export default function ProgressBar({ currentStep }: { currentStep: number }) {
             <div
               className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium transition-all duration-300 ${
                 i < currentStep
-                  ? 'bg-brand-violet text-white'
+                  ? 'bg-brand-dark text-white'
                   : i === currentStep
-                  ? 'bg-brand-dark text-white ring-4 ring-brand-violet/20'
+                  ? 'bg-brand-dark text-white ring-4 ring-brand-dark/20'
                   : 'bg-brand-border text-brand-dark/40'
               }`}
             >
@@ -44,7 +44,7 @@ export default function ProgressBar({ currentStep }: { currentStep: number }) {
       </div>
       <div className="h-1 bg-brand-border rounded-full overflow-hidden mt-2">
         <div
-          className="h-full bg-gradient-to-r from-brand-violet to-brand-dark rounded-full transition-all duration-500 ease-out"
+          className="h-full bg-brand-dark rounded-full transition-all duration-500 ease-out"
           style={{ width: `${(currentStep / (STEP_LABELS.length - 1)) * 100}%` }}
         />
       </div>

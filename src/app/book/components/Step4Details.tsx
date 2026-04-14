@@ -68,14 +68,14 @@ export default function Step4Details({
       <div className="space-y-4">
         {/* Contact info */}
         <div className="bg-white border border-brand-border rounded-2xl p-5 space-y-4">
-          <h3 className="text-sm font-semibold text-brand-violet uppercase tracking-wider">Contact</h3>
+          <h3 className="text-sm font-semibold text-brand-dark uppercase tracking-wider">Contact</h3>
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label className="text-sm text-gray-500 mb-1 block">First name *</label>
               <input
                 value={firstName}
                 onChange={e => setFirstName(e.target.value)}
-                className="w-full px-4 py-2.5 rounded-xl border border-brand-border bg-white text-brand-dark focus:outline-none focus:ring-2 focus:ring-brand-violet/30 focus:border-brand-violet transition"
+                className="w-full px-4 py-2.5 rounded-xl border border-brand-border bg-white text-brand-dark focus:outline-none focus:ring-2 focus:ring-brand-dark/30 focus:border-brand-dark transition"
               />
             </div>
             <div>
@@ -83,7 +83,7 @@ export default function Step4Details({
               <input
                 value={lastName}
                 onChange={e => setLastName(e.target.value)}
-                className="w-full px-4 py-2.5 rounded-xl border border-brand-border bg-white text-brand-dark focus:outline-none focus:ring-2 focus:ring-brand-violet/30 focus:border-brand-violet transition"
+                className="w-full px-4 py-2.5 rounded-xl border border-brand-border bg-white text-brand-dark focus:outline-none focus:ring-2 focus:ring-brand-dark/30 focus:border-brand-dark transition"
               />
             </div>
           </div>
@@ -93,7 +93,7 @@ export default function Step4Details({
               type="email"
               value={email}
               onChange={e => setEmail(e.target.value)}
-              className="w-full px-4 py-2.5 rounded-xl border border-brand-border bg-white text-brand-dark focus:outline-none focus:ring-2 focus:ring-brand-violet/30 focus:border-brand-violet transition"
+              className="w-full px-4 py-2.5 rounded-xl border border-brand-border bg-white text-brand-dark focus:outline-none focus:ring-2 focus:ring-brand-dark/30 focus:border-brand-dark transition"
             />
           </div>
           <div>
@@ -102,14 +102,14 @@ export default function Step4Details({
               type="tel"
               value={phone}
               onChange={e => setPhone(e.target.value)}
-              className="w-full px-4 py-2.5 rounded-xl border border-brand-border bg-white text-brand-dark focus:outline-none focus:ring-2 focus:ring-brand-violet/30 focus:border-brand-violet transition"
+              className="w-full px-4 py-2.5 rounded-xl border border-brand-border bg-white text-brand-dark focus:outline-none focus:ring-2 focus:ring-brand-dark/30 focus:border-brand-dark transition"
             />
           </div>
         </div>
 
         {/* Pet info */}
         <div className="bg-white border border-brand-border rounded-2xl p-5 space-y-4">
-          <h3 className="text-sm font-semibold text-brand-violet uppercase tracking-wider">Pet Info</h3>
+          <h3 className="text-sm font-semibold text-brand-dark uppercase tracking-wider">Pet Info</h3>
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label className="text-sm text-gray-500 mb-1 block">Pet name</label>
@@ -117,7 +117,7 @@ export default function Step4Details({
                 value={petName}
                 onChange={e => setPetName(e.target.value)}
                 placeholder="e.g. Luna"
-                className="w-full px-4 py-2.5 rounded-xl border border-brand-border bg-white text-brand-dark placeholder:text-gray-300 focus:outline-none focus:ring-2 focus:ring-brand-violet/30 focus:border-brand-violet transition"
+                className="w-full px-4 py-2.5 rounded-xl border border-brand-border bg-white text-brand-dark placeholder:text-gray-300 focus:outline-none focus:ring-2 focus:ring-brand-dark/30 focus:border-brand-dark transition"
               />
             </div>
             <div>
@@ -125,7 +125,7 @@ export default function Step4Details({
               <select
                 value={petType}
                 onChange={e => setPetType(e.target.value)}
-                className="w-full px-4 py-2.5 rounded-xl border border-brand-border bg-white text-brand-dark focus:outline-none focus:ring-2 focus:ring-brand-violet/30 focus:border-brand-violet transition"
+                className="w-full px-4 py-2.5 rounded-xl border border-brand-border bg-white text-brand-dark focus:outline-none focus:ring-2 focus:ring-brand-dark/30 focus:border-brand-dark transition"
               >
                 <option value="">Select...</option>
                 <option value="Dog">Dog</option>
@@ -142,20 +142,20 @@ export default function Step4Details({
               onChange={e => setPetNotes(e.target.value)}
               rows={3}
               placeholder="Allergies, medications, temperament, favorite toys..."
-              className="w-full px-4 py-2.5 rounded-xl border border-brand-border bg-white text-brand-dark placeholder:text-gray-300 focus:outline-none focus:ring-2 focus:ring-brand-violet/30 focus:border-brand-violet transition resize-none"
+              className="w-full px-4 py-2.5 rounded-xl border border-brand-border bg-white text-brand-dark placeholder:text-gray-300 focus:outline-none focus:ring-2 focus:ring-brand-dark/30 focus:border-brand-dark transition resize-none"
             />
           </div>
         </div>
 
         {/* Photo upload */}
         <div className="bg-white border border-brand-border rounded-2xl p-5">
-          <h3 className="text-sm font-semibold text-brand-violet uppercase tracking-wider mb-3">
+          <h3 className="text-sm font-semibold text-brand-dark uppercase tracking-wider mb-3">
             Photo (optional)
           </h3>
           <p className="text-sm text-gray-500 mb-3">
             Upload a photo of your pet so we know who to expect!
           </p>
-          <label className="flex items-center justify-center gap-2 py-3 border-2 border-dashed border-brand-border rounded-xl cursor-pointer hover:border-brand-violet hover:bg-brand-surface/50 transition">
+          <label className="flex items-center justify-center gap-2 py-3 border-2 border-dashed border-brand-border rounded-xl cursor-pointer hover:border-brand-dark hover:bg-brand-surface/50 transition">
             <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
             </svg>
@@ -183,7 +183,7 @@ export default function Step4Details({
             inspirationPhotoUrl: photoUrl,
           })}
           disabled={!isValid || submitting}
-          className="w-full py-4 bg-brand-dark text-white rounded-xl font-medium text-lg hover:bg-brand-violet transition disabled:opacity-40"
+          className="w-full py-4 bg-brand-dark text-white rounded-xl font-medium text-lg hover:bg-[#2a2a2a] transition disabled:opacity-40"
         >
           {submitting ? 'Confirming...' : 'Confirm Booking'}
         </button>

@@ -69,12 +69,12 @@ export default function Step0Welcome({ onContinue }: Props) {
           value={lookupValue}
           onChange={e => { setLookupValue(e.target.value); setLookedUp(false) }}
           onKeyDown={e => e.key === 'Enter' && handleLookup()}
-          className="flex-1 px-4 py-3 rounded-xl border border-brand-border bg-white text-brand-dark placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-brand-violet/30 focus:border-brand-violet transition"
+          className="flex-1 px-4 py-3 rounded-xl border border-brand-border bg-white text-brand-dark placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-brand-dark/30 focus:border-brand-dark transition"
         />
         <button
           onClick={handleLookup}
           disabled={loading || !lookupValue.trim()}
-          className="px-6 py-3 bg-brand-dark text-white rounded-xl font-medium hover:bg-brand-violet transition disabled:opacity-40"
+          className="px-6 py-3 bg-brand-dark text-white rounded-xl font-medium hover:bg-[#2a2a2a] transition disabled:opacity-40"
         >
           {loading ? '...' : 'Go'}
         </button>
@@ -99,7 +99,7 @@ export default function Step0Welcome({ onContinue }: Props) {
               email: client.email || '',
               phone: client.phone || '',
             })}
-            className="mt-4 w-full py-3 bg-brand-dark text-white rounded-xl font-medium hover:bg-brand-violet transition"
+            className="mt-4 w-full py-3 bg-brand-dark text-white rounded-xl font-medium hover:bg-[#2a2a2a] transition"
           >
             Continue Booking
           </button>
@@ -123,7 +123,7 @@ export default function Step0Welcome({ onContinue }: Props) {
                   className={`flex-1 py-2.5 rounded-xl text-sm font-medium border transition ${
                     isFirstVisit === val
                       ? 'bg-brand-dark text-white border-brand-dark'
-                      : 'bg-white text-brand-dark border-brand-border hover:border-brand-violet'
+                      : 'bg-white text-brand-dark border-brand-border hover:border-brand-dark'
                   }`}
                 >
                   {val ? 'Yes' : 'No'}
@@ -143,7 +143,7 @@ export default function Step0Welcome({ onContinue }: Props) {
                     className={`py-2.5 px-3 rounded-xl text-sm font-medium border transition ${
                       howDidYouHear === opt
                         ? 'bg-brand-dark text-white border-brand-dark'
-                        : 'bg-white text-brand-dark border-brand-border hover:border-brand-violet'
+                        : 'bg-white text-brand-dark border-brand-border hover:border-brand-dark'
                     }`}
                   >
                     {opt}
@@ -159,7 +159,7 @@ export default function Step0Welcome({ onContinue }: Props) {
                     value={referredByName}
                     onChange={e => setReferredByName(e.target.value)}
                     placeholder="Their name"
-                    className="mt-1 w-full px-4 py-2.5 rounded-xl border border-brand-border bg-white text-brand-dark focus:outline-none focus:ring-2 focus:ring-brand-violet/30 focus:border-brand-violet transition"
+                    className="mt-1 w-full px-4 py-2.5 rounded-xl border border-brand-border bg-white text-brand-dark focus:outline-none focus:ring-2 focus:ring-brand-dark/30 focus:border-brand-dark transition"
                   />
                 </div>
               )}
@@ -177,7 +177,7 @@ export default function Step0Welcome({ onContinue }: Props) {
                 email: lookupValue.includes('@') ? lookupValue : '',
                 phone: !lookupValue.includes('@') ? lookupValue : '',
               })}
-              className="w-full py-3 bg-brand-dark text-white rounded-xl font-medium hover:bg-brand-violet transition"
+              className="w-full py-3 bg-brand-dark text-white rounded-xl font-medium hover:bg-[#2a2a2a] transition"
             >
               Continue
             </button>

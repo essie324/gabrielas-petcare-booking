@@ -60,7 +60,7 @@ export default function BookPage() {
     return (
       <div className="min-h-screen flex items-center justify-center bg-brand-bg">
         <div className="text-center">
-          <div className="w-10 h-10 border-2 border-brand-violet border-t-transparent rounded-full animate-spin mx-auto mb-4" />
+          <div className="w-10 h-10 border-2 border-brand-dark border-t-transparent rounded-full animate-spin mx-auto mb-4" />
           <p className="text-gray-400 font-heading text-lg">Loading...</p>
         </div>
       </div>
@@ -78,7 +78,7 @@ export default function BookPage() {
           {step > 0 && step < 5 && (
             <button
               onClick={() => setStep(s => s - 1)}
-              className="text-sm text-brand-violet hover:text-brand-dark transition flex items-center gap-1"
+              className="text-sm text-brand-dark hover:text-[#2a2a2a] transition flex items-center gap-1"
             >
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />

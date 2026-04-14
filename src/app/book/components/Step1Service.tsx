@@ -26,7 +26,7 @@ export default function Step1Service({ services, onSelect }: Props) {
 
       {Object.entries(grouped).map(([category, items]) => (
         <div key={category} className="mb-8">
-          <h3 className="text-sm font-semibold text-brand-violet uppercase tracking-wider mb-3">
+          <h3 className="text-sm font-semibold text-brand-dark uppercase tracking-wider mb-3">
             {category}
           </h3>
           <div className="grid gap-3">
@@ -34,7 +34,7 @@ export default function Step1Service({ services, onSelect }: Props) {
               <button
                 key={service.id}
                 onClick={() => onSelect(service)}
-                className="group bg-white border border-brand-border rounded-2xl p-5 text-left hover:border-brand-violet hover:shadow-lg hover:shadow-brand-violet/5 transition-all duration-200"
+                className="group bg-white border border-brand-border rounded-2xl p-5 text-left hover:border-brand-dark hover:shadow-lg hover:shadow-brand-dark/5 transition-all duration-200"
               >
                 <div className="flex items-center justify-between">
                   <div>
@@ -54,7 +54,7 @@ export default function Step1Service({ services, onSelect }: Props) {
                         ? 'Free'
                         : `$${(service.price_cents / 100).toFixed(0)}`}
                     </p>
-                    <span className="text-brand-violet opacity-0 group-hover:opacity-100 transition text-sm">
+                    <span className="text-brand-dark opacity-0 group-hover:opacity-100 transition text-sm">
                       Select →
                     </span>
                   </div>

@@ -61,7 +61,7 @@ export default function Step5Confirmation({
                   className="w-full h-full object-cover"
                 />
               ) : (
-                <div className="w-full h-full flex items-center justify-center text-brand-violet text-lg font-heading font-bold">
+                <div className="w-full h-full flex items-center justify-center text-brand-dark text-lg font-heading font-bold">
                   {provider.first_name[0]}
                 </div>
               )}
@@ -116,7 +116,7 @@ export default function Step5Confirmation({
 
       <a
         href="/"
-        className="inline-block mt-6 px-8 py-3 bg-brand-dark text-white rounded-xl font-medium hover:bg-brand-violet transition"
+        className="inline-block mt-6 px-8 py-3 bg-brand-dark text-white rounded-xl font-medium hover:bg-[#2a2a2a] transition"
       >
         Back to Home
       </a>

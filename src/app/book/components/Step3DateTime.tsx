@@ -140,7 +140,7 @@ export default function Step3DateTime({ providerId, serviceDuration, onSelect }:
                   isSelected
                     ? 'bg-brand-dark text-white shadow-lg'
                     : isAvailable
-                    ? 'text-brand-dark hover:bg-brand-violet/10 hover:text-brand-violet cursor-pointer'
+                    ? 'text-brand-dark hover:bg-brand-dark/10 hover:text-brand-dark cursor-pointer'
                     : 'text-gray-300 cursor-not-allowed'
                 }`}
               >

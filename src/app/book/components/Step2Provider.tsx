@@ -25,7 +25,7 @@ export default function Step2Provider({ providers, isNewClient, onSelect }: Prop
         {visible.length > 1 && (
           <button
             onClick={() => onSelect(null, true)}
-            className="group bg-white border border-brand-border rounded-2xl p-5 text-left hover:border-brand-violet hover:shadow-lg hover:shadow-brand-violet/5 transition-all duration-200"
+            className="group bg-white border border-brand-border rounded-2xl p-5 text-left hover:border-brand-dark hover:shadow-lg hover:shadow-brand-dark/5 transition-all duration-200"
           >
             <div className="flex items-center gap-4">
               <div className="w-14 h-14 rounded-full bg-brand-surface flex items-center justify-center flex-shrink-0">
@@ -53,7 +53,7 @@ export default function Step2Provider({ providers, isNewClient, onSelect }: Prop
               className={`group bg-white border rounded-2xl p-5 text-left transition-all duration-200 ${
                 isReferralOnly
                   ? 'border-brand-border/50 opacity-70 cursor-not-allowed'
-                  : 'border-brand-border hover:border-brand-violet hover:shadow-lg hover:shadow-brand-violet/5'
+                  : 'border-brand-border hover:border-brand-dark hover:shadow-lg hover:shadow-brand-dark/5'
               }`}
             >
               <div className="flex items-center gap-4">
@@ -65,7 +65,7 @@ export default function Step2Provider({ providers, isNewClient, onSelect }: Prop
                       className="w-full h-full object-cover"
                     />
                   ) : (
-                    <div className="w-full h-full flex items-center justify-center text-brand-violet text-xl font-heading font-bold">
+                    <div className="w-full h-full flex items-center justify-center text-brand-dark text-xl font-heading font-bold">
                       {provider.first_name[0]}
                     </div>
                   )}
@@ -89,7 +89,7 @@ export default function Step2Provider({ providers, isNewClient, onSelect }: Prop
                       {provider.specialty_tags.map(tag => (
                         <span
                           key={tag}
-                          className="text-xs px-2 py-0.5 rounded-full bg-brand-surface text-brand-violet"
+                          className="text-xs px-2 py-0.5 rounded-full bg-brand-surface text-brand-dark"
                         >
                           {tag}
                         </span>

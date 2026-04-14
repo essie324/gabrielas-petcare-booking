@@ -53,3 +53,48 @@ export async function updateAppointmentStatus(appointmentId: string, status: str
   }
   return { success: true }
 }
+
+export async function getWorkingHours() {
+  const supabase = await createServerSupabaseClient()
+  const { data, error } = await supabase
+    .from('provider_working_hours')
+    .select('*, providers(first_name, last_name)')
+    .order('day_of_week', { ascending: true })
+
+  if (error) {
+    console.error('Error fetching working hours:', error)
+    return []
+  }
+  return data || []
+}
+
+export async function updateWorkingHours(
+  id: string,
+  updates: { start_time?: string; end_time?: string; is_working?: boolean }
+) {
+  const supabase = await createServerSupabaseClient()
+  const { error } = await supabase
+    .from('provider_working_hours')
+    .update(updates)
+    .eq('id', id)
+
+  if (error) {
+    console.error('Error updating working hours:', error)
+    return { success: false }
+  }
+  return { success: true }
+}
+
+export async function updateProviderStatus(providerId: string, bookingStatus: string) {
+  const supabase = await createServerSupabaseClient()
+  const { error } = await supabase
+    .from('providers')
+    .update({ booking_status: bookingStatus })
+    .eq('id', providerId)
+
+  if (error) {
+    console.error('Error updating provider status:', error)
+    return { success: false }
+  }
+  return { success: true }
+}

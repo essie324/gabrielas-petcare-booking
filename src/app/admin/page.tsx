@@ -1,7 +1,17 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
-import { verifyAdminPassword, getAppointments, getProviders, updateAppointmentStatus } from './actions'
+import {
+  verifyAdminPassword,
+  getAppointments,
+  getProviders,
+  updateAppointmentStatus,
+  getWorkingHours,
+  updateWorkingHours,
+  updateProviderStatus,
+} from './actions'
+
+/* ── Types ─────────────────────────────────── */
 
 interface AppointmentWithDetails {
   id: string
@@ -13,166 +23,182 @@ interface AppointmentWithDetails {
   referred_by_name: string | null
   how_did_you_hear: string | null
   clients: {
-    id: string
-    first_name: string
-    last_name: string
-    email: string | null
-    phone: string | null
-    pet_name: string | null
-    pet_type: string | null
-    pet_notes: string | null
+    id: string; first_name: string; last_name: string
+    email: string | null; phone: string | null
+    pet_name: string | null; pet_type: string | null; pet_notes: string | null
   }
-  providers: {
-    id: string
-    first_name: string
-    last_name: string
-  }
-  services: {
-    id: string
-    name: string
-    duration_minutes: number
-    price_cents: number
-  }
+  providers: { id: string; first_name: string; last_name: string }
+  services: { id: string; name: string; duration_minutes: number; price_cents: number }
 }
 
 interface ProviderInfo {
-  id: string
-  first_name: string
-  last_name: string
-  booking_status: string
+  id: string; first_name: string; last_name: string
+  booking_status: string; bio: string | null
 }
 
-function formatTime(isoString: string) {
-  const d = new Date(isoString)
-  const h = d.getHours()
-  const m = d.getMinutes()
-  const h12 = h % 12 || 12
-  const ampm = h < 12 ? 'AM' : 'PM'
-  return `${h12}:${String(m).padStart(2, '0')} ${ampm}`
+interface WorkingHourRow {
+  id: string; provider_id: string; day_of_week: number
+  start_time: string; end_time: string; is_working: boolean
+  providers: { first_name: string; last_name: string }
 }
 
-function formatDate(dateStr: string) {
-  const d = new Date(dateStr + 'T12:00:00')
-  return d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })
+/* ── Helpers ───────────────────────────────── */
+
+const DAY_NAMES = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday']
+const DAY_SHORT = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
+
+function fmtTime(iso: string) {
+  const d = new Date(iso)
+  const h = d.getHours(), m = d.getMinutes()
+  return `${h % 12 || 12}:${String(m).padStart(2, '0')} ${h < 12 ? 'AM' : 'PM'}`
 }
 
-function formatPhone(phone: string | null) {
-  if (!phone) return ''
-  const digits = phone.replace(/\D/g, '')
-  if (digits.length === 10) {
-    return `(${digits.slice(0,3)}) ${digits.slice(3,6)}-${digits.slice(6)}`
-  }
-  if (digits.length === 11 && digits[0] === '1') {
-    return `(${digits.slice(1,4)}) ${digits.slice(4,7)}-${digits.slice(7)}`
-  }
-  return phone
+function fmtPhone(p: string | null) {
+  if (!p) return ''
+  const d = p.replace(/\D/g, '')
+  if (d.length === 10) return `(${d.slice(0,3)}) ${d.slice(3,6)}-${d.slice(6)}`
+  if (d.length === 11 && d[0] === '1') return `(${d.slice(1,4)}) ${d.slice(4,7)}-${d.slice(7)}`
+  return p
 }
 
-const statusColors: Record<string, string> = {
+function toDateStr(d: Date) {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+}
+
+function todayStr() { return toDateStr(new Date()) }
+
+const STATUS_COLORS: Record<string, string> = {
   confirmed: 'bg-green-100 text-green-800 border-green-200',
   completed: 'bg-blue-100 text-blue-800 border-blue-200',
   cancelled: 'bg-red-100 text-red-800 border-red-200',
   no_show: 'bg-yellow-100 text-yellow-800 border-yellow-200',
 }
 
+const STATUS_DOT: Record<string, string> = {
+  confirmed: 'bg-green-500',
+  completed: 'bg-blue-500',
+  cancelled: 'bg-red-400',
+  no_show: 'bg-yellow-500',
+}
+
+/* ── Main Component ────────────────────────── */
+
 export default function AdminPage() {
   const [authenticated, setAuthenticated] = useState(false)
   const [password, setPassword] = useState('')
   const [loginError, setLoginError] = useState('')
+  const [activeTab, setActiveTab] = useState<'calendar' | 'payments' | 'availability'>('calendar')
+
+  // Calendar state
   const [appointments, setAppointments] = useState<AppointmentWithDetails[]>([])
   const [providers, setProviders] = useState<ProviderInfo[]>([])
-  const [selectedProvider, setSelectedProvider] = useState<string>('all')
-  const [viewMode, setViewMode] = useState<'day' | 'week'>('week')
-  const [currentDate, setCurrentDate] = useState(() => {
-    const now = new Date()
-    return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`
+  const [selectedProvider, setSelectedProvider] = useState('all')
+  const [currentMonth, setCurrentMonth] = useState(() => {
+    const n = new Date(); return { year: n.getFullYear(), month: n.getMonth() }
   })
-  const [loading, setLoading] = useState(false)
+  const [selectedDate, setSelectedDate] = useState<string | null>(todayStr())
   const [expandedId, setExpandedId] = useState<string | null>(null)
+  const [loading, setLoading] = useState(false)
 
-  const getDateRange = useCallback(() => {
-    const base = new Date(currentDate + 'T12:00:00')
-    if (viewMode === 'day') {
-      return { from: currentDate, to: currentDate }
-    }
-    // Week view: get Monday to Sunday
-    const day = base.getDay()
-    const monday = new Date(base)
-    monday.setDate(base.getDate() - (day === 0 ? 6 : day - 1))
-    const sunday = new Date(monday)
-    sunday.setDate(monday.getDate() + 6)
-    const from = `${monday.getFullYear()}-${String(monday.getMonth() + 1).padStart(2, '0')}-${String(monday.getDate()).padStart(2, '0')}`
-    const to = `${sunday.getFullYear()}-${String(sunday.getMonth() + 1).padStart(2, '0')}-${String(sunday.getDate()).padStart(2, '0')}`
-    return { from, to }
-  }, [currentDate, viewMode])
+  // Availability state
+  const [workingHours, setWorkingHours] = useState<WorkingHourRow[]>([])
+  const [loadingHours, setLoadingHours] = useState(false)
+  const [savingHourId, setSavingHourId] = useState<string | null>(null)
 
-  const fetchData = useCallback(async () => {
+  /* ── Data Fetching ─────────────────────────── */
+
+  const fetchCalendarData = useCallback(async () => {
     setLoading(true)
-    const { from, to } = getDateRange()
-    const [appts, provs] = await Promise.all([
-      getAppointments(from, to),
-      getProviders(),
-    ])
+    const { year, month } = currentMonth
+    const from = `${year}-${String(month + 1).padStart(2, '0')}-01`
+    const lastDay = new Date(year, month + 1, 0).getDate()
+    const to = `${year}-${String(month + 1).padStart(2, '0')}-${String(lastDay).padStart(2, '0')}`
+    const [appts, provs] = await Promise.all([getAppointments(from, to), getProviders()])
     setAppointments(appts as AppointmentWithDetails[])
     setProviders(provs as ProviderInfo[])
     setLoading(false)
-  }, [getDateRange])
+  }, [currentMonth])
+
+  const fetchAvailability = useCallback(async () => {
+    setLoadingHours(true)
+    const [hours, provs] = await Promise.all([getWorkingHours(), getProviders()])
+    setWorkingHours(hours as WorkingHourRow[])
+    setProviders(provs as ProviderInfo[])
+    setLoadingHours(false)
+  }, [])
 
   useEffect(() => {
-    if (authenticated) fetchData()
-  }, [authenticated, fetchData])
+    if (!authenticated) return
+    if (activeTab === 'calendar') fetchCalendarData()
+    if (activeTab === 'availability') fetchAvailability()
+  }, [authenticated, activeTab, fetchCalendarData, fetchAvailability])
+
+  /* ── Handlers ──────────────────────────────── */
 
   const handleLogin = async () => {
-    const valid = await verifyAdminPassword(password)
-    if (valid) {
-      setAuthenticated(true)
-      setLoginError('')
-    } else {
-      setLoginError('Incorrect password')
-    }
+    if (await verifyAdminPassword(password)) { setAuthenticated(true); setLoginError('') }
+    else setLoginError('Incorrect password')
   }
 
-  const handleStatusChange = async (appointmentId: string, newStatus: string) => {
-    await updateAppointmentStatus(appointmentId, newStatus)
-    fetchData()
+  const handleStatusChange = async (id: string, status: string) => {
+    await updateAppointmentStatus(id, status)
+    fetchCalendarData()
   }
 
-  const navigate = (direction: number) => {
-    const base = new Date(currentDate + 'T12:00:00')
-    const days = viewMode === 'day' ? 1 : 7
-    base.setDate(base.getDate() + direction * days)
-    setCurrentDate(`${base.getFullYear()}-${String(base.getMonth() + 1).padStart(2, '0')}-${String(base.getDate()).padStart(2, '0')}`)
+  const handleHourToggle = async (row: WorkingHourRow) => {
+    setSavingHourId(row.id)
+    await updateWorkingHours(row.id, { is_working: !row.is_working })
+    await fetchAvailability()
+    setSavingHourId(null)
   }
 
+  const handleHourChange = async (row: WorkingHourRow, field: 'start_time' | 'end_time', value: string) => {
+    setSavingHourId(row.id)
+    await updateWorkingHours(row.id, { [field]: value })
+    await fetchAvailability()
+    setSavingHourId(null)
+  }
+
+  const handleProviderStatusChange = async (providerId: string, status: string) => {
+    await updateProviderStatus(providerId, status)
+    await fetchAvailability()
+  }
+
+  /* ── Calendar Grid Logic ───────────────────── */
+
+  const { year, month } = currentMonth
+  const firstDayOfWeek = new Date(year, month, 1).getDay()
+  const daysInMonth = new Date(year, month + 1, 0).getDate()
+  const monthLabel = new Date(year, month).toLocaleDateString('en-US', { month: 'long', year: 'numeric' })
+
+  const prevMonth = () => {
+    setCurrentMonth(prev => prev.month === 0 ? { year: prev.year - 1, month: 11 } : { ...prev, month: prev.month - 1 })
+    setSelectedDate(null)
+  }
+  const nextMonth = () => {
+    setCurrentMonth(prev => prev.month === 11 ? { year: prev.year + 1, month: 0 } : { ...prev, month: prev.month + 1 })
+    setSelectedDate(null)
+  }
   const goToToday = () => {
-    const now = new Date()
-    setCurrentDate(`${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`)
+    const n = new Date()
+    setCurrentMonth({ year: n.getFullYear(), month: n.getMonth() })
+    setSelectedDate(todayStr())
   }
 
-  // Filter appointments
-  const filtered = selectedProvider === 'all'
-    ? appointments
-    : appointments.filter(a => a.providers.id === selectedProvider)
-
-  // Group by date
-  const grouped: Record<string, AppointmentWithDetails[]> = {}
+  // Group appointments by date
+  const apptsByDate: Record<string, AppointmentWithDetails[]> = {}
+  const filtered = selectedProvider === 'all' ? appointments : appointments.filter(a => a.providers.id === selectedProvider)
   filtered.forEach(a => {
-    const dateKey = a.starts_at.split('T')[0]
-    if (!grouped[dateKey]) grouped[dateKey] = []
-    grouped[dateKey].push(a)
+    const key = a.starts_at.split('T')[0]
+    if (!apptsByDate[key]) apptsByDate[key] = []
+    apptsByDate[key].push(a)
   })
 
-  // Get all dates in range for display
-  const { from, to } = getDateRange()
-  const allDates: string[] = []
-  const d = new Date(from + 'T12:00:00')
-  const end = new Date(to + 'T12:00:00')
-  while (d <= end) {
-    allDates.push(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`)
-    d.setDate(d.getDate() + 1)
-  }
+  // Selected day appointments
+  const dayAppts = selectedDate ? (apptsByDate[selectedDate] || []) : []
 
-  // Login screen
+  /* ── Login Screen ──────────────────────────── */
+
   if (!authenticated) {
     return (
       <div className="min-h-screen bg-brand-bg flex items-center justify-center px-4">
@@ -183,8 +209,7 @@ export default function AdminPage() {
             <div>
               <label className="text-sm text-gray-500 mb-1 block">Password</label>
               <input
-                type="password"
-                value={password}
+                type="password" value={password}
                 onChange={e => setPassword(e.target.value)}
                 onKeyDown={e => e.key === 'Enter' && handleLogin()}
                 className="w-full px-4 py-3 rounded-xl border border-brand-border bg-white text-brand-dark focus:outline-none focus:ring-2 focus:ring-brand-dark/30 focus:border-brand-dark transition"
@@ -192,19 +217,15 @@ export default function AdminPage() {
               />
               {loginError && <p className="text-red-500 text-sm mt-1">{loginError}</p>}
             </div>
-            <button
-              onClick={handleLogin}
-              className="w-full py-3 bg-brand-dark text-white rounded-xl font-medium hover:bg-[#2a2a2a] transition"
-            >
-              Log In
-            </button>
+            <button onClick={handleLogin} className="w-full py-3 bg-brand-dark text-white rounded-xl font-medium hover:bg-[#2a2a2a] transition">Log In</button>
           </div>
         </div>
       </div>
     )
   }
 
-  // Dashboard
+  /* ── Dashboard Shell ───────────────────────── */
+
   return (
     <div className="min-h-screen bg-brand-bg">
       {/* Header */}
@@ -216,244 +237,369 @@ export default function AdminPage() {
           </div>
           <div className="flex items-center gap-4">
             <a href="/" className="text-sm text-gray-500 hover:text-brand-dark transition">View Site</a>
-            <button
-              onClick={() => setAuthenticated(false)}
-              className="text-sm text-gray-500 hover:text-brand-dark transition"
-            >
-              Log Out
-            </button>
+            <button onClick={() => setAuthenticated(false)} className="text-sm text-gray-500 hover:text-brand-dark transition">Log Out</button>
           </div>
         </div>
       </header>
 
-      <main className="max-w-[1400px] mx-auto px-6 py-8">
-        {/* Controls */}
-        <div className="flex flex-wrap items-center justify-between gap-4 mb-8">
-          <div className="flex items-center gap-3">
-            {/* Navigation */}
+      {/* Tabs */}
+      <div className="border-b border-brand-border bg-brand-bg">
+        <div className="max-w-[1400px] mx-auto px-6 flex gap-0">
+          {([
+            { key: 'calendar', label: 'Calendar' },
+            { key: 'payments', label: 'Payments' },
+            { key: 'availability', label: 'Availability' },
+          ] as const).map(tab => (
             <button
-              onClick={() => navigate(-1)}
-              className="p-2 rounded-lg border border-brand-border hover:bg-white transition"
+              key={tab.key}
+              onClick={() => setActiveTab(tab.key)}
+              className={`px-6 py-3 text-sm font-medium border-b-2 transition ${
+                activeTab === tab.key
+                  ? 'border-brand-dark text-brand-dark'
+                  : 'border-transparent text-gray-400 hover:text-brand-dark'
+              }`}
             >
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-              </svg>
+              {tab.label}
             </button>
-            <button
-              onClick={goToToday}
-              className="px-4 py-2 rounded-lg border border-brand-border hover:bg-white transition text-sm font-medium"
-            >
-              Today
-            </button>
-            <button
-              onClick={() => navigate(1)}
-              className="p-2 rounded-lg border border-brand-border hover:bg-white transition"
-            >
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-              </svg>
-            </button>
-            <span className="font-heading text-lg text-brand-dark ml-2">
-              {viewMode === 'day'
-                ? new Date(currentDate + 'T12:00:00').toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })
-                : `${formatDate(from)} — ${formatDate(to)}`
-              }
-            </span>
-          </div>
+          ))}
+        </div>
+      </div>
 
-          <div className="flex items-center gap-3">
-            {/* View toggle */}
-            <div className="flex rounded-lg border border-brand-border overflow-hidden">
-              <button
-                onClick={() => setViewMode('day')}
-                className={`px-4 py-2 text-sm font-medium transition ${viewMode === 'day' ? 'bg-brand-dark text-white' : 'bg-white text-brand-dark hover:bg-brand-surface'}`}
-              >
-                Day
-              </button>
-              <button
-                onClick={() => setViewMode('week')}
-                className={`px-4 py-2 text-sm font-medium transition ${viewMode === 'week' ? 'bg-brand-dark text-white' : 'bg-white text-brand-dark hover:bg-brand-surface'}`}
-              >
-                Week
-              </button>
+      <main className="max-w-[1400px] mx-auto px-6 py-8">
+
+        {/* ═══════════════════ CALENDAR TAB ═══════════════════ */}
+        {activeTab === 'calendar' && (
+          <div className="grid lg:grid-cols-[1fr_420px] gap-8">
+            {/* Left: Calendar Grid */}
+            <div>
+              {/* Month nav */}
+              <div className="flex items-center justify-between mb-5">
+                <div className="flex items-center gap-3">
+                  <button onClick={prevMonth} className="p-2 rounded-lg border border-brand-border hover:bg-white transition">
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" /></svg>
+                  </button>
+                  <h2 className="font-heading text-xl text-brand-dark min-w-[200px] text-center">{monthLabel}</h2>
+                  <button onClick={nextMonth} className="p-2 rounded-lg border border-brand-border hover:bg-white transition">
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" /></svg>
+                  </button>
+                  <button onClick={goToToday} className="px-4 py-2 rounded-lg border border-brand-border hover:bg-white transition text-sm font-medium ml-2">Today</button>
+                </div>
+                <select
+                  value={selectedProvider} onChange={e => setSelectedProvider(e.target.value)}
+                  className="px-4 py-2 rounded-lg border border-brand-border bg-white text-sm text-brand-dark focus:outline-none focus:ring-2 focus:ring-brand-dark/30"
+                >
+                  <option value="all">All Staff</option>
+                  {providers.map(p => <option key={p.id} value={p.id}>{p.first_name} {p.last_name}</option>)}
+                </select>
+              </div>
+
+              {/* Grid */}
+              <div className="bg-white border border-brand-border rounded-2xl overflow-hidden">
+                {/* Day headers */}
+                <div className="grid grid-cols-7 border-b border-brand-border">
+                  {DAY_SHORT.map(d => (
+                    <div key={d} className="text-center text-xs font-semibold text-gray-400 uppercase tracking-wider py-3">{d}</div>
+                  ))}
+                </div>
+
+                {/* Day cells */}
+                <div className="grid grid-cols-7">
+                  {/* Empty leading cells */}
+                  {Array.from({ length: firstDayOfWeek }).map((_, i) => (
+                    <div key={`e-${i}`} className="border-b border-r border-brand-border min-h-[100px] bg-brand-surface/30" />
+                  ))}
+
+                  {/* Day cells */}
+                  {Array.from({ length: daysInMonth }).map((_, i) => {
+                    const day = i + 1
+                    const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`
+                    const isToday = dateStr === todayStr()
+                    const isSelected = dateStr === selectedDate
+                    const dayCount = (apptsByDate[dateStr] || []).length
+                    const cellIndex = firstDayOfWeek + i
+
+                    return (
+                      <button
+                        key={day}
+                        onClick={() => setSelectedDate(dateStr)}
+                        className={`border-b border-r border-brand-border min-h-[100px] p-2 text-left transition relative ${
+                          isSelected ? 'bg-brand-dark/5 ring-2 ring-inset ring-brand-dark' : 'hover:bg-brand-surface/50'
+                        } ${cellIndex % 7 === 6 ? 'border-r-0' : ''}`}
+                      >
+                        <span className={`inline-flex items-center justify-center w-7 h-7 rounded-full text-sm font-medium ${
+                          isToday ? 'bg-brand-dark text-white' : 'text-brand-dark'
+                        }`}>
+                          {day}
+                        </span>
+                        {dayCount > 0 && (
+                          <div className="mt-1 space-y-0.5">
+                            {(apptsByDate[dateStr] || []).slice(0, 3).map(a => (
+                              <div key={a.id} className="flex items-center gap-1 px-1">
+                                <span className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${STATUS_DOT[a.status] || 'bg-gray-400'}`} />
+                                <span className="text-[11px] text-gray-600 truncate">{fmtTime(a.starts_at)} {a.clients.first_name}</span>
+                              </div>
+                            ))}
+                            {dayCount > 3 && (
+                              <p className="text-[11px] text-gray-400 px-1">+{dayCount - 3} more</p>
+                            )}
+                          </div>
+                        )}
+                      </button>
+                    )
+                  })}
+
+                  {/* Trailing empty cells */}
+                  {Array.from({ length: (7 - (firstDayOfWeek + daysInMonth) % 7) % 7 }).map((_, i) => (
+                    <div key={`t-${i}`} className="border-b border-r border-brand-border min-h-[100px] bg-brand-surface/30" />
+                  ))}
+                </div>
+              </div>
             </div>
 
-            {/* Provider filter */}
-            <select
-              value={selectedProvider}
-              onChange={e => setSelectedProvider(e.target.value)}
-              className="px-4 py-2 rounded-lg border border-brand-border bg-white text-sm text-brand-dark focus:outline-none focus:ring-2 focus:ring-brand-dark/30"
-            >
-              <option value="all">All Staff</option>
-              {providers.map(p => (
-                <option key={p.id} value={p.id}>{p.first_name} {p.last_name}</option>
-              ))}
-            </select>
-          </div>
-        </div>
+            {/* Right: Day Detail Sidebar */}
+            <div>
+              <div className="sticky top-[120px]">
+                <h3 className="font-heading text-lg text-brand-dark mb-4">
+                  {selectedDate
+                    ? new Date(selectedDate + 'T12:00:00').toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })
+                    : 'Select a day'}
+                </h3>
 
-        {/* Loading */}
-        {loading && (
-          <div className="text-center py-12 text-gray-400">
-            <div className="w-8 h-8 border-2 border-brand-dark border-t-transparent rounded-full animate-spin mx-auto mb-3" />
-            Loading appointments...
+                {loading && <p className="text-sm text-gray-400">Loading...</p>}
+
+                {!loading && selectedDate && dayAppts.length === 0 && (
+                  <div className="bg-white border border-brand-border rounded-2xl p-8 text-center">
+                    <p className="text-sm text-gray-400">No appointments this day.</p>
+                  </div>
+                )}
+
+                {!loading && dayAppts.length > 0 && (
+                  <div className="space-y-3">
+                    {dayAppts.map(appt => {
+                      const isExpanded = expandedId === appt.id
+                      return (
+                        <div key={appt.id} className="bg-white border border-brand-border rounded-2xl overflow-hidden">
+                          <button onClick={() => setExpandedId(isExpanded ? null : appt.id)} className="w-full p-4 text-left">
+                            <div className="flex items-center gap-3">
+                              <div className="min-w-[56px]">
+                                <div className="font-heading text-sm text-brand-dark">{fmtTime(appt.starts_at)}</div>
+                                <div className="text-[11px] text-gray-400">{appt.services.duration_minutes}m</div>
+                              </div>
+                              <div className="flex-1 min-w-0">
+                                <p className="text-sm font-medium text-brand-dark truncate">
+                                  {appt.clients.first_name} {appt.clients.last_name}
+                                  {appt.clients.pet_name && <span className="text-gray-400 font-normal"> &amp; {appt.clients.pet_name}</span>}
+                                </p>
+                                <p className="text-xs text-gray-500 truncate">{appt.services.name} · {appt.providers.first_name}</p>
+                              </div>
+                              <span className={`text-[11px] px-2 py-0.5 rounded-full border font-medium flex-shrink-0 ${STATUS_COLORS[appt.status]}`}>
+                                {appt.status.replace('_', ' ')}
+                              </span>
+                            </div>
+                          </button>
+
+                          {isExpanded && (
+                            <div className="border-t border-brand-border px-4 py-3 bg-brand-surface/30 space-y-3">
+                              <div className="grid grid-cols-2 gap-3 text-sm">
+                                <div>
+                                  <p className="text-[11px] text-gray-400 uppercase tracking-wider mb-1">Client</p>
+                                  <p className="text-brand-dark font-medium">{appt.clients.first_name} {appt.clients.last_name}</p>
+                                  {appt.clients.email && <p className="text-gray-500"><a href={`mailto:${appt.clients.email}`} className="underline">{appt.clients.email}</a></p>}
+                                  {appt.clients.phone && <p className="text-gray-500"><a href={`tel:${appt.clients.phone}`} className="underline">{fmtPhone(appt.clients.phone)}</a></p>}
+                                </div>
+                                <div>
+                                  <p className="text-[11px] text-gray-400 uppercase tracking-wider mb-1">Pet</p>
+                                  {appt.clients.pet_name && <p className="text-brand-dark font-medium">{appt.clients.pet_name}</p>}
+                                  {appt.clients.pet_type && <p className="text-gray-500">{appt.clients.pet_type}</p>}
+                                  {appt.clients.pet_notes && <p className="text-gray-500 text-xs mt-0.5">{appt.clients.pet_notes}</p>}
+                                </div>
+                              </div>
+                              <div className="text-sm">
+                                <p className="text-gray-500">{fmtTime(appt.starts_at)} — {fmtTime(appt.ends_at)} · {appt.services.price_cents === 0 ? 'Free' : `$${(appt.services.price_cents / 100).toFixed(0)}`}</p>
+                                <p className="text-xs text-gray-400 font-mono mt-1">Ref: {appt.booking_ref}</p>
+                                {appt.referred_by_name && <p className="text-xs text-gray-400">Referred by: {appt.referred_by_name}</p>}
+                              </div>
+                              <div className="flex flex-wrap gap-1.5 pt-2 border-t border-brand-border">
+                                {['confirmed', 'completed', 'cancelled', 'no_show'].map(s => (
+                                  <button key={s} onClick={() => handleStatusChange(appt.id, s)} disabled={appt.status === s}
+                                    className={`text-[11px] px-2.5 py-1 rounded-full border font-medium transition ${appt.status === s ? STATUS_COLORS[s] : 'bg-white border-brand-border text-gray-500 hover:bg-brand-surface'}`}
+                                  >
+                                    {s.replace('_', ' ')}
+                                  </button>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      )
+                    })}
+                  </div>
+                )}
+              </div>
+            </div>
           </div>
         )}
 
-        {/* Calendar */}
-        {!loading && (
-          <div className="space-y-6">
-            {allDates.map(dateStr => {
-              const dayAppts = grouped[dateStr] || []
-              const isToday = dateStr === `${new Date().getFullYear()}-${String(new Date().getMonth() + 1).padStart(2, '0')}-${String(new Date().getDate()).padStart(2, '0')}`
+        {/* ═══════════════════ PAYMENTS TAB ═══════════════════ */}
+        {activeTab === 'payments' && (
+          <div className="max-w-3xl mx-auto">
+            <h2 className="font-heading text-2xl text-brand-dark mb-2">Payment Processing</h2>
+            <p className="text-gray-500 mb-8">Connect a payment processor to accept online payments for bookings.</p>
+
+            <div className="space-y-4">
+              {/* Stripe */}
+              <div className="bg-white border border-brand-border rounded-2xl p-6">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-4">
+                    <div className="w-12 h-12 rounded-xl bg-[#635BFF]/10 flex items-center justify-center">
+                      <span className="text-[#635BFF] font-bold text-lg">S</span>
+                    </div>
+                    <div>
+                      <h3 className="font-heading text-lg text-brand-dark">Stripe</h3>
+                      <p className="text-sm text-gray-500">Accept credit cards, Apple Pay, Google Pay. 2.9% + 30¢ per transaction.</p>
+                    </div>
+                  </div>
+                  <span className="text-xs px-3 py-1 rounded-full bg-gray-100 text-gray-500 border border-gray-200 font-medium">Not connected</span>
+                </div>
+                <div className="mt-4 pt-4 border-t border-brand-border">
+                  <p className="text-sm text-gray-500 mb-3">To connect Stripe, you&apos;ll need to create a Stripe account and add your API keys.</p>
+                  <a href="https://stripe.com" target="_blank" rel="noopener noreferrer"
+                    className="inline-block px-5 py-2.5 bg-brand-dark text-white rounded-xl text-sm font-medium hover:bg-[#2a2a2a] transition">
+                    Set Up Stripe
+                  </a>
+                </div>
+              </div>
+
+              {/* Square */}
+              <div className="bg-white border border-brand-border rounded-2xl p-6">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-4">
+                    <div className="w-12 h-12 rounded-xl bg-[#006AFF]/10 flex items-center justify-center">
+                      <span className="text-[#006AFF] font-bold text-lg">Sq</span>
+                    </div>
+                    <div>
+                      <h3 className="font-heading text-lg text-brand-dark">Square</h3>
+                      <p className="text-sm text-gray-500">In-person and online payments. 2.6% + 10¢ per transaction.</p>
+                    </div>
+                  </div>
+                  <span className="text-xs px-3 py-1 rounded-full bg-gray-100 text-gray-500 border border-gray-200 font-medium">Not connected</span>
+                </div>
+                <div className="mt-4 pt-4 border-t border-brand-border">
+                  <p className="text-sm text-gray-500 mb-3">Square works well for businesses that also accept in-person payments.</p>
+                  <a href="https://squareup.com" target="_blank" rel="noopener noreferrer"
+                    className="inline-block px-5 py-2.5 bg-brand-dark text-white rounded-xl text-sm font-medium hover:bg-[#2a2a2a] transition">
+                    Set Up Square
+                  </a>
+                </div>
+              </div>
+
+              {/* Cash / Venmo / Zelle */}
+              <div className="bg-white border border-brand-border rounded-2xl p-6">
+                <div className="flex items-center gap-4">
+                  <div className="w-12 h-12 rounded-xl bg-green-50 flex items-center justify-center">
+                    <span className="text-green-600 font-bold text-lg">$</span>
+                  </div>
+                  <div>
+                    <h3 className="font-heading text-lg text-brand-dark">Cash / Venmo / Zelle</h3>
+                    <p className="text-sm text-gray-500">Collect payment in person or through peer-to-peer apps. No processing fees.</p>
+                  </div>
+                </div>
+                <div className="mt-4 pt-4 border-t border-brand-border">
+                  <p className="text-sm text-gray-500">This is the current default. Clients book online and pay at the time of service. No integration needed.</p>
+                  <div className="mt-3 flex items-center gap-2">
+                    <span className="w-2 h-2 rounded-full bg-green-500" />
+                    <span className="text-sm text-green-700 font-medium">Active</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* ═══════════════════ AVAILABILITY TAB ═══════════════════ */}
+        {activeTab === 'availability' && (
+          <div className="max-w-4xl mx-auto">
+            <h2 className="font-heading text-2xl text-brand-dark mb-2">Staff Availability</h2>
+            <p className="text-gray-500 mb-8">Manage working hours and booking status for each team member.</p>
+
+            {loadingHours && (
+              <div className="text-center py-12 text-gray-400">
+                <div className="w-8 h-8 border-2 border-brand-dark border-t-transparent rounded-full animate-spin mx-auto mb-3" />
+                Loading...
+              </div>
+            )}
+
+            {!loadingHours && providers.map(provider => {
+              const hours = workingHours.filter(h => h.provider_id === provider.id)
 
               return (
-                <div key={dateStr}>
-                  <div className={`flex items-center gap-3 mb-3 ${isToday ? '' : ''}`}>
-                    <div className={`font-heading text-sm uppercase tracking-wider ${isToday ? 'text-brand-dark font-bold' : 'text-gray-400'}`}>
-                      {formatDate(dateStr)}
+                <div key={provider.id} className="bg-white border border-brand-border rounded-2xl mb-6 overflow-hidden">
+                  {/* Provider header */}
+                  <div className="p-5 border-b border-brand-border flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-full bg-brand-surface flex items-center justify-center font-heading font-bold text-brand-dark">
+                        {provider.first_name[0]}
+                      </div>
+                      <div>
+                        <h3 className="font-heading text-lg text-brand-dark">{provider.first_name} {provider.last_name}</h3>
+                        <p className="text-xs text-gray-400">{provider.bio || 'Team member'}</p>
+                      </div>
                     </div>
-                    {isToday && (
-                      <span className="text-xs px-2 py-0.5 rounded-full bg-brand-dark text-white font-medium">Today</span>
-                    )}
-                    <span className="text-xs text-gray-400">
-                      {dayAppts.length} appointment{dayAppts.length !== 1 ? 's' : ''}
-                    </span>
-                    <div className="flex-1 border-t border-brand-border" />
+                    <div className="flex items-center gap-2">
+                      <label className="text-xs text-gray-500 mr-1">Status:</label>
+                      <select
+                        value={provider.booking_status}
+                        onChange={e => handleProviderStatusChange(provider.id, e.target.value)}
+                        className="text-sm px-3 py-1.5 rounded-lg border border-brand-border bg-white text-brand-dark focus:outline-none focus:ring-2 focus:ring-brand-dark/30"
+                      >
+                        <option value="accepting_all">Accepting all bookings</option>
+                        <option value="referral_only">Referral only</option>
+                        <option value="closed">Not accepting</option>
+                      </select>
+                    </div>
                   </div>
 
-                  {dayAppts.length === 0 ? (
-                    <div className="text-sm text-gray-400 pl-4 py-2">No appointments</div>
-                  ) : (
-                    <div className="space-y-3">
-                      {dayAppts.map(appt => {
-                        const isExpanded = expandedId === appt.id
-                        return (
-                          <div
-                            key={appt.id}
-                            className="bg-white border border-brand-border rounded-2xl overflow-hidden hover:shadow-md transition-shadow"
-                          >
-                            {/* Main row */}
-                            <button
-                              onClick={() => setExpandedId(isExpanded ? null : appt.id)}
-                              className="w-full p-5 text-left"
-                            >
-                              <div className="flex items-center justify-between flex-wrap gap-3">
-                                <div className="flex items-center gap-4">
-                                  <div className="text-center min-w-[60px]">
-                                    <div className="font-heading text-lg text-brand-dark">{formatTime(appt.starts_at)}</div>
-                                    <div className="text-xs text-gray-400">{appt.services.duration_minutes} min</div>
-                                  </div>
-                                  <div className="w-px h-10 bg-brand-border" />
-                                  <div>
-                                    <div className="font-medium text-brand-dark">
-                                      {appt.clients.first_name} {appt.clients.last_name}
-                                      {appt.clients.pet_name && (
-                                        <span className="text-gray-400 font-normal"> &amp; {appt.clients.pet_name}</span>
-                                      )}
-                                    </div>
-                                    <div className="text-sm text-gray-500">{appt.services.name}</div>
-                                  </div>
-                                </div>
-                                <div className="flex items-center gap-3">
-                                  <span className="text-xs text-gray-400">
-                                    {appt.providers.first_name}
-                                  </span>
-                                  <span className={`text-xs px-2.5 py-1 rounded-full border font-medium ${statusColors[appt.status] || 'bg-gray-100 text-gray-800 border-gray-200'}`}>
-                                    {appt.status.replace('_', ' ')}
-                                  </span>
-                                  <span className="text-xs font-mono text-gray-400">{appt.booking_ref}</span>
-                                  <svg className={`w-4 h-4 text-gray-400 transition-transform ${isExpanded ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                                  </svg>
-                                </div>
-                              </div>
-                            </button>
+                  {/* Working hours grid */}
+                  <div className="divide-y divide-brand-border">
+                    {hours.sort((a, b) => a.day_of_week - b.day_of_week).map(row => (
+                      <div key={row.id} className={`px-5 py-3 flex items-center gap-4 ${!row.is_working ? 'opacity-50' : ''} ${savingHourId === row.id ? 'bg-brand-surface/50' : ''}`}>
+                        {/* Day name */}
+                        <span className="w-24 text-sm font-medium text-brand-dark">{DAY_NAMES[row.day_of_week]}</span>
 
-                            {/* Expanded details */}
-                            {isExpanded && (
-                              <div className="border-t border-brand-border px-5 py-4 bg-brand-surface/30">
-                                <div className="grid md:grid-cols-3 gap-6">
-                                  {/* Client info */}
-                                  <div>
-                                    <h4 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">Client</h4>
-                                    <p className="text-sm text-brand-dark font-medium">{appt.clients.first_name} {appt.clients.last_name}</p>
-                                    {appt.clients.email && (
-                                      <p className="text-sm text-gray-500">
-                                        <a href={`mailto:${appt.clients.email}`} className="underline hover:no-underline">{appt.clients.email}</a>
-                                      </p>
-                                    )}
-                                    {appt.clients.phone && (
-                                      <p className="text-sm text-gray-500">
-                                        <a href={`tel:${appt.clients.phone}`} className="underline hover:no-underline">{formatPhone(appt.clients.phone)}</a>
-                                      </p>
-                                    )}
-                                  </div>
+                        {/* Toggle */}
+                        <button
+                          onClick={() => handleHourToggle(row)}
+                          className={`relative w-10 h-6 rounded-full transition-colors ${row.is_working ? 'bg-green-500' : 'bg-gray-300'}`}
+                        >
+                          <span className={`absolute top-0.5 w-5 h-5 rounded-full bg-white shadow transition-transform ${row.is_working ? 'left-[18px]' : 'left-0.5'}`} />
+                        </button>
 
-                                  {/* Pet info */}
-                                  <div>
-                                    <h4 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">Pet</h4>
-                                    {appt.clients.pet_name && <p className="text-sm text-brand-dark font-medium">{appt.clients.pet_name}</p>}
-                                    {appt.clients.pet_type && <p className="text-sm text-gray-500">{appt.clients.pet_type}</p>}
-                                    {appt.clients.pet_notes && <p className="text-sm text-gray-500 mt-1">{appt.clients.pet_notes}</p>}
-                                  </div>
-
-                                  {/* Booking info */}
-                                  <div>
-                                    <h4 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">Booking</h4>
-                                    <p className="text-sm text-gray-500">
-                                      {formatTime(appt.starts_at)} — {formatTime(appt.ends_at)}
-                                    </p>
-                                    <p className="text-sm text-gray-500">
-                                      {appt.services.price_cents === 0 ? 'Free' : `$${(appt.services.price_cents / 100).toFixed(0)}`}
-                                    </p>
-                                    <p className="text-sm text-gray-500">Provider: {appt.providers.first_name} {appt.providers.last_name}</p>
-                                    {appt.referred_by_name && <p className="text-sm text-gray-500 mt-1">Referred by: {appt.referred_by_name}</p>}
-                                    {appt.how_did_you_hear && <p className="text-sm text-gray-500">Found via: {appt.how_did_you_hear}</p>}
-                                  </div>
-                                </div>
-
-                                {/* Actions */}
-                                <div className="flex items-center gap-2 mt-5 pt-4 border-t border-brand-border">
-                                  <span className="text-xs text-gray-400 mr-2">Update status:</span>
-                                  {['confirmed', 'completed', 'cancelled', 'no_show'].map(status => (
-                                    <button
-                                      key={status}
-                                      onClick={() => handleStatusChange(appt.id, status)}
-                                      disabled={appt.status === status}
-                                      className={`text-xs px-3 py-1.5 rounded-full border font-medium transition ${
-                                        appt.status === status
-                                          ? statusColors[status] + ' opacity-100'
-                                          : 'bg-white border-brand-border text-gray-500 hover:bg-brand-surface'
-                                      }`}
-                                    >
-                                      {status.replace('_', ' ')}
-                                    </button>
-                                  ))}
-                                </div>
-                              </div>
-                            )}
+                        {/* Time pickers */}
+                        {row.is_working ? (
+                          <div className="flex items-center gap-2 flex-1">
+                            <input
+                              type="time"
+                              value={row.start_time.slice(0, 5)}
+                              onChange={e => handleHourChange(row, 'start_time', e.target.value)}
+                              className="px-3 py-1.5 rounded-lg border border-brand-border bg-white text-sm text-brand-dark focus:outline-none focus:ring-2 focus:ring-brand-dark/30"
+                            />
+                            <span className="text-gray-400 text-sm">to</span>
+                            <input
+                              type="time"
+                              value={row.end_time.slice(0, 5)}
+                              onChange={e => handleHourChange(row, 'end_time', e.target.value)}
+                              className="px-3 py-1.5 rounded-lg border border-brand-border bg-white text-sm text-brand-dark focus:outline-none focus:ring-2 focus:ring-brand-dark/30"
+                            />
                           </div>
-                        )
-                      })}
-                    </div>
-                  )}
+                        ) : (
+                          <span className="text-sm text-gray-400 flex-1">Day off</span>
+                        )}
+                      </div>
+                    ))}
+                  </div>
                 </div>
               )
             })}
-          </div>
-        )}
-
-        {/* Empty state */}
-        {!loading && filtered.length === 0 && (
-          <div className="text-center py-16">
-            <div className="w-16 h-16 mx-auto mb-4 bg-brand-surface rounded-full flex items-center justify-center">
-              <svg className="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-              </svg>
-            </div>
-            <h3 className="font-heading text-lg text-brand-dark mb-1">No appointments</h3>
-            <p className="text-sm text-gray-400">Nothing scheduled for this {viewMode === 'day' ? 'day' : 'week'}.</p>
           </div>
         )}
       </main>

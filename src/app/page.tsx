@@ -9,7 +9,10 @@ export default function Home() {
           </a>
           <nav className="hidden md:flex items-center gap-9 text-[16px]">
             <a href="/" className="text-brand-dark border-b-2 border-brand-dark pb-1">Home</a>
+            <a href="/about" className="text-brand-dark border-b-2 border-transparent hover:border-brand-dark pb-1 transition">About</a>
+            <a href="/services" className="text-brand-dark border-b-2 border-transparent hover:border-brand-dark pb-1 transition">Services</a>
             <a href="/book" className="text-brand-dark border-b-2 border-transparent hover:border-brand-dark pb-1 transition">Book Appointment</a>
+            <a href="/contact" className="text-brand-dark border-b-2 border-transparent hover:border-brand-dark pb-1 transition">Contact</a>
           </nav>
           <a
             href="/book"
@@ -159,7 +162,10 @@ export default function Home() {
               <h4 className="font-heading text-[1.1rem] mb-[18px]">Navigate</h4>
               <ul className="space-y-2.5">
                 <li><a href="/" className="text-[#c9c6be] hover:text-white transition">Home</a></li>
+                <li><a href="/about" className="text-[#c9c6be] hover:text-white transition">About</a></li>
+                <li><a href="/services" className="text-[#c9c6be] hover:text-white transition">Services</a></li>
                 <li><a href="/book" className="text-[#c9c6be] hover:text-white transition">Book Appointment</a></li>
+                <li><a href="/contact" className="text-[#c9c6be] hover:text-white transition">Contact</a></li>
               </ul>
             </div>
             <div>

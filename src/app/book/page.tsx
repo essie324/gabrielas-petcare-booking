@@ -164,7 +164,9 @@ export default function BookPage() {
                   phone: details.phone,
                   petName: details.petName,
                   petType: details.petType,
-                  petNotes: details.petNotes,
+                  petNotes: details.petBreed
+                    ? `Breed: ${details.petBreed}${details.petNotes ? '\n' + details.petNotes : ''}`
+                    : details.petNotes,
                   serviceId: selectedService.id,
                   providerId,
                   date: selectedDate,

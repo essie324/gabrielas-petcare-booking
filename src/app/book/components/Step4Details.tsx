@@ -14,6 +14,7 @@ interface Props {
     phone: string
     petName: string
     petType: string
+    petBreed: string
     petNotes: string
     inspirationPhotoUrl: string | null
   }) => void
@@ -33,6 +34,7 @@ export default function Step4Details({
   const [phone, setPhone] = useState(existingClient?.phone || defaultPhone || '')
   const [petName, setPetName] = useState(existingClient?.pet_name || '')
   const [petType, setPetType] = useState(existingClient?.pet_type || '')
+  const [petBreed, setPetBreed] = useState('')
   const [petNotes, setPetNotes] = useState(existingClient?.pet_notes || '')
   const [uploading, setUploading] = useState(false)
   const [photoUrl, setPhotoUrl] = useState<string | null>(null)
@@ -131,9 +133,22 @@ export default function Step4Details({
                 <option value="Dog">Dog</option>
                 <option value="Cat">Cat</option>
                 <option value="Bird">Bird</option>
+                <option value="Rabbit">Rabbit</option>
+                <option value="Fish">Fish</option>
+                <option value="Reptile">Reptile</option>
+                <option value="Hamster/Guinea Pig">Hamster/Guinea Pig</option>
                 <option value="Other">Other</option>
               </select>
             </div>
+          </div>
+          <div>
+            <label className="text-sm text-gray-500 mb-1 block">Breed / Description</label>
+            <input
+              value={petBreed}
+              onChange={e => setPetBreed(e.target.value)}
+              placeholder="e.g. Golden Retriever, Tabby mix, 2 year old Cockatiel..."
+              className="w-full px-4 py-2.5 rounded-xl border border-brand-border bg-white text-brand-dark placeholder:text-gray-300 focus:outline-none focus:ring-2 focus:ring-brand-dark/30 focus:border-brand-dark transition"
+            />
           </div>
           <div>
             <label className="text-sm text-gray-500 mb-1 block">Special notes or instructions</label>
@@ -179,6 +194,7 @@ export default function Step4Details({
             phone: phone.trim(),
             petName: petName.trim(),
             petType,
+            petBreed: petBreed.trim(),
             petNotes: petNotes.trim(),
             inspirationPhotoUrl: photoUrl,
           })}

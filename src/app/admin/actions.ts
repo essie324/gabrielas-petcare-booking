@@ -186,6 +186,75 @@ export async function removeProvider(providerId: string) {
   return { success: true }
 }
 
+// ── Client Management ──────────────────────
+
+export async function getClients(search?: string) {
+  const supabase = await createServerSupabaseClient()
+
+  let query = supabase
+    .from('clients')
+    .select('*')
+    .order('created_at', { ascending: false })
+    .limit(100)
+
+  if (search && search.trim()) {
+    const s = search.trim().toLowerCase()
+    query = query.or(`first_name.ilike.%${s}%,last_name.ilike.%${s}%,email.ilike.%${s}%,phone.ilike.%${s}%,pet_name.ilike.%${s}%`)
+  }
+
+  const { data, error } = await query
+  if (error) { console.error('Error fetching clients:', error); return [] }
+  return data || []
+}
+
+export async function getClientWithAppointments(clientId: string) {
+  const supabase = await createServerSupabaseClient()
+
+  const [{ data: client }, { data: appointments }] = await Promise.all([
+    supabase.from('clients').select('*').eq('id', clientId).single(),
+    supabase
+      .from('appointments')
+      .select('*, services(*), providers(first_name, last_name)')
+      .eq('client_id', clientId)
+      .order('starts_at', { ascending: false }),
+  ])
+
+  return { client, appointments: appointments || [] }
+}
+
+export async function updateClient(
+  clientId: string,
+  updates: {
+    first_name?: string; last_name?: string
+    email?: string; phone?: string
+    pet_name?: string; pet_type?: string; pet_notes?: string
+    profile_photo_url?: string
+  }
+) {
+  const supabase = await createServerSupabaseClient()
+  const { error } = await supabase
+    .from('clients')
+    .update(updates)
+    .eq('id', clientId)
+
+  if (error) { console.error('Error updating client:', error); return { success: false } }
+  return { success: true }
+}
+
+export async function getClientPhotos(clientId: string) {
+  const supabase = await createServerSupabaseClient()
+
+  // Get inspiration photos from appointments
+  const { data } = await supabase
+    .from('appointments')
+    .select('id, booking_ref, inspiration_photo_url, starts_at')
+    .eq('client_id', clientId)
+    .not('inspiration_photo_url', 'is', null)
+    .order('starts_at', { ascending: false })
+
+  return data || []
+}
+
 // Email notification for new bookings
 export async function sendBookingNotification(booking: {
   clientName: string

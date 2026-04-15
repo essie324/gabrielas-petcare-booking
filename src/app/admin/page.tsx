@@ -12,6 +12,10 @@ import {
   updateProviderInfo,
   addProvider,
   removeProvider,
+  getClients,
+  getClientWithAppointments,
+  updateClient,
+  getClientPhotos,
 } from './actions'
 
 /* ── Types ─────────────────────────────────── */
@@ -38,6 +42,21 @@ interface ProviderInfo {
   id: string; first_name: string; last_name: string
   email: string | null; phone: string | null
   booking_status: string; bio: string | null
+}
+
+interface ClientInfo {
+  id: string; first_name: string; last_name: string
+  email: string | null; phone: string | null
+  pet_name: string | null; pet_type: string | null; pet_notes: string | null
+  profile_photo_url: string | null
+  created_at: string
+}
+
+interface ClientAppointment {
+  id: string; starts_at: string; ends_at: string; status: string; booking_ref: string
+  inspiration_photo_url: string | null
+  services: { name: string; duration_minutes: number; price_cents: number }
+  providers: { first_name: string; last_name: string }
 }
 
 interface WorkingHourRow {
@@ -133,7 +152,7 @@ export default function AdminPage() {
   const [authenticated, setAuthenticated] = useState(false)
   const [password, setPassword] = useState('')
   const [loginError, setLoginError] = useState('')
-  const [activeTab, setActiveTab] = useState<'calendar' | 'payments' | 'availability'>('calendar')
+  const [activeTab, setActiveTab] = useState<'calendar' | 'clients' | 'payments' | 'availability'>('calendar')
 
   // Calendar state
   const [appointments, setAppointments] = useState<AppointmentWithDetails[]>([])
@@ -150,6 +169,15 @@ export default function AdminPage() {
   const [workingHours, setWorkingHours] = useState<WorkingHourRow[]>([])
   const [loadingHours, setLoadingHours] = useState(false)
   const [savingHourId, setSavingHourId] = useState<string | null>(null)
+
+  // Client state
+  const [clients, setClients] = useState<ClientInfo[]>([])
+  const [clientSearch, setClientSearch] = useState('')
+  const [loadingClients, setLoadingClients] = useState(false)
+  const [selectedClient, setSelectedClient] = useState<ClientInfo | null>(null)
+  const [clientAppointments, setClientAppointments] = useState<ClientAppointment[]>([])
+  const [clientPhotos, setClientPhotos] = useState<{ id: string; booking_ref: string; inspiration_photo_url: string; starts_at: string }[]>([])
+  const [editingClient, setEditingClient] = useState(false)
 
   // Staff management state
   const [showAddStaff, setShowAddStaff] = useState(false)
@@ -180,11 +208,27 @@ export default function AdminPage() {
     setLoadingHours(false)
   }, [])
 
+  const fetchClients = useCallback(async (search?: string) => {
+    setLoadingClients(true)
+    const data = await getClients(search)
+    setClients(data as ClientInfo[])
+    setLoadingClients(false)
+  }, [])
+
+  const openClientDetail = async (client: ClientInfo) => {
+    setSelectedClient(client)
+    const { appointments, } = await getClientWithAppointments(client.id)
+    setClientAppointments(appointments as ClientAppointment[])
+    const photos = await getClientPhotos(client.id)
+    setClientPhotos(photos as typeof clientPhotos)
+  }
+
   useEffect(() => {
     if (!authenticated) return
     if (activeTab === 'calendar') fetchCalendarData()
     if (activeTab === 'availability') fetchAvailability()
-  }, [authenticated, activeTab, fetchCalendarData, fetchAvailability])
+    if (activeTab === 'clients') fetchClients()
+  }, [authenticated, activeTab, fetchCalendarData, fetchAvailability, fetchClients])
 
   /* ── Handlers ──────────────────────────────── */
 
@@ -322,6 +366,7 @@ export default function AdminPage() {
         <div className="max-w-[1400px] mx-auto px-6 flex gap-0">
           {([
             { key: 'calendar', label: 'Calendar' },
+            { key: 'clients', label: 'Clients' },
             { key: 'payments', label: 'Payments' },
             { key: 'availability', label: 'Availability' },
           ] as const).map(tab => (
@@ -512,6 +557,266 @@ export default function AdminPage() {
                 )}
               </div>
             </div>
+          </div>
+        )}
+
+        {/* ═══════════════════ CLIENTS TAB ═══════════════════ */}
+        {activeTab === 'clients' && (
+          <div className="max-w-5xl mx-auto">
+            {selectedClient ? (
+              /* ── Client Detail View ── */
+              <div>
+                <button onClick={() => { setSelectedClient(null); setEditingClient(false) }}
+                  className="flex items-center gap-2 text-sm text-gray-500 hover:text-brand-dark mb-6 transition">
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" /></svg>
+                  Back to clients
+                </button>
+
+                <div className="grid lg:grid-cols-[340px_1fr] gap-8">
+                  {/* Left: Client Card */}
+                  <div className="bg-white rounded-2xl border border-brand-border p-6">
+                    <div className="flex items-center gap-4 mb-5">
+                      <div className="w-16 h-16 rounded-full bg-brand-surface flex items-center justify-center text-2xl font-heading text-brand-dark flex-shrink-0 overflow-hidden">
+                        {selectedClient.profile_photo_url
+                          ? <img src={selectedClient.profile_photo_url} alt="" className="w-full h-full object-cover" />
+                          : `${selectedClient.first_name[0]}${selectedClient.last_name[0]}`}
+                      </div>
+                      <div>
+                        <h2 className="font-heading text-xl text-brand-dark">{selectedClient.first_name} {selectedClient.last_name}</h2>
+                        <p className="text-sm text-gray-400">Client since {new Date(selectedClient.created_at).toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}</p>
+                      </div>
+                    </div>
+
+                    {editingClient ? (
+                      <form onSubmit={async (e) => {
+                        e.preventDefault()
+                        const fd = new FormData(e.currentTarget)
+                        await updateClient(selectedClient.id, {
+                          first_name: fd.get('first_name') as string,
+                          last_name: fd.get('last_name') as string,
+                          email: (fd.get('email') as string) || undefined,
+                          phone: (fd.get('phone') as string) || undefined,
+                          pet_name: (fd.get('pet_name') as string) || undefined,
+                          pet_type: (fd.get('pet_type') as string) || undefined,
+                          pet_notes: (fd.get('pet_notes') as string) || undefined,
+                        })
+                        const updated = { ...selectedClient,
+                          first_name: fd.get('first_name') as string,
+                          last_name: fd.get('last_name') as string,
+                          email: (fd.get('email') as string) || null,
+                          phone: (fd.get('phone') as string) || null,
+                          pet_name: (fd.get('pet_name') as string) || null,
+                          pet_type: (fd.get('pet_type') as string) || null,
+                          pet_notes: (fd.get('pet_notes') as string) || null,
+                        }
+                        setSelectedClient(updated)
+                        setEditingClient(false)
+                        fetchClients(clientSearch)
+                      }} className="space-y-3">
+                        <div className="grid grid-cols-2 gap-3">
+                          <div>
+                            <label className="text-xs text-gray-500 mb-1 block">First name</label>
+                            <input name="first_name" defaultValue={selectedClient.first_name} required
+                              className="w-full px-3 py-2 rounded-lg border border-brand-border bg-white text-sm text-brand-dark focus:outline-none focus:ring-2 focus:ring-brand-dark/30 transition" />
+                          </div>
+                          <div>
+                            <label className="text-xs text-gray-500 mb-1 block">Last name</label>
+                            <input name="last_name" defaultValue={selectedClient.last_name} required
+                              className="w-full px-3 py-2 rounded-lg border border-brand-border bg-white text-sm text-brand-dark focus:outline-none focus:ring-2 focus:ring-brand-dark/30 transition" />
+                          </div>
+                        </div>
+                        <div>
+                          <label className="text-xs text-gray-500 mb-1 block">Email</label>
+                          <input name="email" type="email" defaultValue={selectedClient.email || ''}
+                            className="w-full px-3 py-2 rounded-lg border border-brand-border bg-white text-sm text-brand-dark focus:outline-none focus:ring-2 focus:ring-brand-dark/30 transition" />
+                        </div>
+                        <div>
+                          <label className="text-xs text-gray-500 mb-1 block">Phone</label>
+                          <input name="phone" type="tel" defaultValue={selectedClient.phone || ''}
+                            className="w-full px-3 py-2 rounded-lg border border-brand-border bg-white text-sm text-brand-dark focus:outline-none focus:ring-2 focus:ring-brand-dark/30 transition" />
+                        </div>
+                        <hr className="border-brand-border" />
+                        <div>
+                          <label className="text-xs text-gray-500 mb-1 block">Pet name</label>
+                          <input name="pet_name" defaultValue={selectedClient.pet_name || ''}
+                            className="w-full px-3 py-2 rounded-lg border border-brand-border bg-white text-sm text-brand-dark focus:outline-none focus:ring-2 focus:ring-brand-dark/30 transition" />
+                        </div>
+                        <div>
+                          <label className="text-xs text-gray-500 mb-1 block">Pet type</label>
+                          <input name="pet_type" defaultValue={selectedClient.pet_type || ''}
+                            className="w-full px-3 py-2 rounded-lg border border-brand-border bg-white text-sm text-brand-dark focus:outline-none focus:ring-2 focus:ring-brand-dark/30 transition" />
+                        </div>
+                        <div>
+                          <label className="text-xs text-gray-500 mb-1 block">Pet notes</label>
+                          <textarea name="pet_notes" rows={3} defaultValue={selectedClient.pet_notes || ''}
+                            className="w-full px-3 py-2 rounded-lg border border-brand-border bg-white text-sm text-brand-dark focus:outline-none focus:ring-2 focus:ring-brand-dark/30 transition resize-none" />
+                        </div>
+                        <div className="flex gap-2 pt-1">
+                          <button type="submit" className="text-sm px-4 py-2 bg-brand-dark text-white rounded-lg hover:bg-[#2a2a2a] transition">Save</button>
+                          <button type="button" onClick={() => setEditingClient(false)} className="text-sm px-4 py-2 border border-brand-border text-gray-500 rounded-lg hover:bg-brand-surface transition">Cancel</button>
+                        </div>
+                      </form>
+                    ) : (
+                      <div className="space-y-3">
+                        {selectedClient.email && (
+                          <div className="flex items-center gap-3 text-sm">
+                            <svg className="w-4 h-4 text-gray-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" /></svg>
+                            <span className="text-brand-dark">{selectedClient.email}</span>
+                          </div>
+                        )}
+                        {selectedClient.phone && (
+                          <div className="flex items-center gap-3 text-sm">
+                            <svg className="w-4 h-4 text-gray-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" /></svg>
+                            <span className="text-brand-dark">{fmtPhone(selectedClient.phone)}</span>
+                          </div>
+                        )}
+
+                        {(selectedClient.pet_name || selectedClient.pet_type) && (
+                          <div className="mt-4 pt-4 border-t border-brand-border">
+                            <p className="text-xs text-gray-400 uppercase tracking-wider mb-2">Pet Info</p>
+                            {selectedClient.pet_name && <p className="text-sm font-medium text-brand-dark">{selectedClient.pet_name}</p>}
+                            {selectedClient.pet_type && <p className="text-sm text-gray-500">{selectedClient.pet_type}</p>}
+                            {selectedClient.pet_notes && <p className="text-sm text-gray-500 mt-1 whitespace-pre-line">{selectedClient.pet_notes}</p>}
+                          </div>
+                        )}
+
+                        <button onClick={() => setEditingClient(true)}
+                          className="mt-4 w-full text-sm py-2.5 border border-brand-border text-brand-dark rounded-lg hover:bg-brand-surface transition">
+                          Edit Client Info
+                        </button>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Right: Appointments & Photos */}
+                  <div className="space-y-8">
+                    {/* Appointment History */}
+                    <div>
+                      <h3 className="font-heading text-lg text-brand-dark mb-4">Appointment History</h3>
+                      {clientAppointments.length === 0 ? (
+                        <div className="bg-white rounded-2xl border border-brand-border p-8 text-center text-gray-400">
+                          No appointments yet
+                        </div>
+                      ) : (
+                        <div className="space-y-3">
+                          {clientAppointments.map(apt => {
+                            const d = new Date(apt.starts_at)
+                            return (
+                              <div key={apt.id} className="bg-white rounded-xl border border-brand-border p-4 flex items-center justify-between gap-4">
+                                <div className="flex-1 min-w-0">
+                                  <div className="flex items-center gap-2 mb-1">
+                                    <span className="font-medium text-sm text-brand-dark">{apt.services.name}</span>
+                                    <span className={`text-[11px] px-2 py-0.5 rounded-full border ${STATUS_COLORS[apt.status] || 'bg-gray-100 text-gray-600 border-gray-200'}`}>
+                                      {apt.status}
+                                    </span>
+                                  </div>
+                                  <p className="text-sm text-gray-500">
+                                    {d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' })} at {fmtTime(apt.starts_at)}
+                                  </p>
+                                  <p className="text-xs text-gray-400">
+                                    with {apt.providers.first_name} {apt.providers.last_name} &middot; Ref: {apt.booking_ref}
+                                  </p>
+                                </div>
+                                <div className="text-right flex-shrink-0">
+                                  <span className="text-sm font-medium text-brand-dark">${(apt.services.price_cents / 100).toFixed(2)}</span>
+                                </div>
+                              </div>
+                            )
+                          })}
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Pet Photos */}
+                    {clientPhotos.length > 0 && (
+                      <div>
+                        <h3 className="font-heading text-lg text-brand-dark mb-4">Pet Photos</h3>
+                        <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                          {clientPhotos.map(photo => (
+                            <a key={photo.id} href={photo.inspiration_photo_url} target="_blank" rel="noopener noreferrer"
+                              className="aspect-square rounded-xl overflow-hidden border border-brand-border hover:border-brand-dark transition group">
+                              <img src={photo.inspiration_photo_url} alt={`Ref: ${photo.booking_ref}`}
+                                className="w-full h-full object-cover group-hover:scale-105 transition duration-300" />
+                            </a>
+                          ))}
+                        </div>
+                        <p className="text-xs text-gray-400 mt-2">{clientPhotos.length} photo{clientPhotos.length !== 1 ? 's' : ''} from bookings</p>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+            ) : (
+              /* ── Client List View ── */
+              <div>
+                <div className="flex items-center justify-between mb-6">
+                  <div>
+                    <h2 className="font-heading text-2xl text-brand-dark mb-1">Clients</h2>
+                    <p className="text-gray-500">View and manage client information and pet profiles.</p>
+                  </div>
+                </div>
+
+                {/* Search */}
+                <div className="mb-6">
+                  <div className="relative max-w-md">
+                    <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                    </svg>
+                    <input
+                      type="text"
+                      value={clientSearch}
+                      onChange={e => { setClientSearch(e.target.value) }}
+                      onKeyDown={e => { if (e.key === 'Enter') fetchClients(clientSearch) }}
+                      placeholder="Search by name, email, phone, or pet name..."
+                      className="w-full pl-10 pr-4 py-3 rounded-xl border border-brand-border bg-white text-brand-dark text-sm focus:outline-none focus:ring-2 focus:ring-brand-dark/30 focus:border-brand-dark transition"
+                    />
+                  </div>
+                  {clientSearch && (
+                    <button onClick={() => { setClientSearch(''); fetchClients() }}
+                      className="text-xs text-gray-400 hover:text-brand-dark mt-2 transition">
+                      Clear search
+                    </button>
+                  )}
+                </div>
+
+                {/* Client Cards */}
+                {loadingClients ? (
+                  <div className="text-center py-16 text-gray-400">Loading clients...</div>
+                ) : clients.length === 0 ? (
+                  <div className="bg-white rounded-2xl border border-brand-border p-12 text-center">
+                    <div className="w-16 h-16 mx-auto mb-4 bg-brand-surface rounded-full flex items-center justify-center">
+                      <svg className="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
+                    </div>
+                    <p className="text-gray-500">{clientSearch ? 'No clients found matching your search.' : 'No clients yet. They\'ll appear here after their first booking.'}</p>
+                  </div>
+                ) : (
+                  <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                    {clients.map(client => (
+                      <button key={client.id} onClick={() => openClientDetail(client)}
+                        className="bg-white rounded-xl border border-brand-border p-5 text-left hover:border-brand-dark hover:shadow-sm transition group">
+                        <div className="flex items-center gap-3 mb-3">
+                          <div className="w-10 h-10 rounded-full bg-brand-surface flex items-center justify-center text-sm font-heading text-brand-dark flex-shrink-0 overflow-hidden">
+                            {client.profile_photo_url
+                              ? <img src={client.profile_photo_url} alt="" className="w-full h-full object-cover" />
+                              : `${client.first_name[0]}${client.last_name[0]}`}
+                          </div>
+                          <div className="min-w-0">
+                            <p className="font-medium text-brand-dark truncate">{client.first_name} {client.last_name}</p>
+                            {client.pet_name && <p className="text-xs text-gray-400 truncate">{client.pet_name}{client.pet_type ? ` (${client.pet_type})` : ''}</p>}
+                          </div>
+                        </div>
+                        {(client.email || client.phone) && (
+                          <div className="space-y-1">
+                            {client.email && <p className="text-xs text-gray-500 truncate">{client.email}</p>}
+                            {client.phone && <p className="text-xs text-gray-500">{fmtPhone(client.phone)}</p>}
+                          </div>
+                        )}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
           </div>
         )}
 

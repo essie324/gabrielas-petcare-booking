@@ -98,3 +98,124 @@ export async function updateProviderStatus(providerId: string, bookingStatus: st
   }
   return { success: true }
 }
+
+export async function updateProviderInfo(
+  providerId: string,
+  updates: { email?: string; phone?: string; bio?: string }
+) {
+  const supabase = await createServerSupabaseClient()
+  const { error } = await supabase
+    .from('providers')
+    .update(updates)
+    .eq('id', providerId)
+
+  if (error) {
+    console.error('Error updating provider info:', error)
+    return { success: false }
+  }
+  return { success: true }
+}
+
+export async function addProvider(data: {
+  firstName: string
+  lastName: string
+  email: string
+  phone: string
+  bio: string
+  bookingStatus: string
+}) {
+  const supabase = await createServerSupabaseClient()
+
+  // Insert provider
+  const { data: newProvider, error } = await supabase
+    .from('providers')
+    .insert({
+      first_name: data.firstName,
+      last_name: data.lastName,
+      email: data.email || null,
+      phone: data.phone || null,
+      bio: data.bio || null,
+      booking_status: data.bookingStatus,
+      specialty_tags: [],
+      active: true,
+    })
+    .select('id')
+    .single()
+
+  if (error) {
+    console.error('Error adding provider:', error)
+    return { success: false, error: error.message }
+  }
+
+  // Create default working hours (Mon-Sat 8am-6pm, Sunday off)
+  const hours = []
+  for (let day = 0; day <= 6; day++) {
+    hours.push({
+      provider_id: newProvider.id,
+      day_of_week: day,
+      start_time: '08:00',
+      end_time: '18:00',
+      is_working: day >= 1 && day <= 6, // Mon-Sat on, Sunday off
+    })
+  }
+
+  const { error: hoursError } = await supabase
+    .from('provider_working_hours')
+    .insert(hours)
+
+  if (hoursError) {
+    console.error('Error adding working hours:', hoursError)
+  }
+
+  return { success: true, providerId: newProvider.id }
+}
+
+export async function removeProvider(providerId: string) {
+  const supabase = await createServerSupabaseClient()
+
+  // Soft delete — set active to false
+  const { error } = await supabase
+    .from('providers')
+    .update({ active: false })
+    .eq('id', providerId)
+
+  if (error) {
+    console.error('Error removing provider:', error)
+    return { success: false }
+  }
+  return { success: true }
+}
+
+// Email notification for new bookings
+export async function sendBookingNotification(booking: {
+  clientName: string
+  clientEmail: string
+  clientPhone: string
+  petName: string
+  serviceName: string
+  providerName: string
+  date: string
+  time: string
+  bookingRef: string
+}) {
+  // Get provider emails/phones for notification
+  const supabase = await createServerSupabaseClient()
+  const { data: providers } = await supabase
+    .from('providers')
+    .select('email, phone, first_name')
+    .eq('active', true)
+
+  const staffEmails = (providers || [])
+    .filter(p => p.email)
+    .map(p => p.email as string)
+
+  const staffPhones = (providers || [])
+    .filter(p => p.phone)
+    .map(p => ({ phone: p.phone as string, name: p.first_name }))
+
+  return {
+    staffEmails,
+    staffPhones,
+    booking,
+  }
+}

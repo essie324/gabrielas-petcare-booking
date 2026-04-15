@@ -9,6 +9,9 @@ import {
   getWorkingHours,
   updateWorkingHours,
   updateProviderStatus,
+  updateProviderInfo,
+  addProvider,
+  removeProvider,
 } from './actions'
 
 /* ── Types ─────────────────────────────────── */
@@ -33,6 +36,7 @@ interface AppointmentWithDetails {
 
 interface ProviderInfo {
   id: string; first_name: string; last_name: string
+  email: string | null; phone: string | null
   booking_status: string; bio: string | null
 }
 
@@ -81,6 +85,48 @@ const STATUS_DOT: Record<string, string> = {
   no_show: 'bg-yellow-500',
 }
 
+/* ── Edit Provider Form ────────────────────── */
+
+function EditProviderForm({ provider, onSave, onCancel }: {
+  provider: ProviderInfo
+  onSave: (id: string, email: string, phone: string, bio: string) => void
+  onCancel: () => void
+}) {
+  const [email, setEmail] = useState(provider.email || '')
+  const [phone, setPhone] = useState(provider.phone || '')
+  const [bio, setBio] = useState(provider.bio || '')
+
+  return (
+    <div className="ml-[52px] mt-3 space-y-3">
+      <div className="grid md:grid-cols-2 gap-3">
+        <div>
+          <label className="text-xs text-gray-500 mb-1 block">Email</label>
+          <input type="email" value={email} onChange={e => setEmail(e.target.value)}
+            placeholder="For booking notifications"
+            className="w-full px-3 py-2 rounded-lg border border-brand-border bg-white text-sm text-brand-dark focus:outline-none focus:ring-2 focus:ring-brand-dark/30 transition" />
+        </div>
+        <div>
+          <label className="text-xs text-gray-500 mb-1 block">Phone</label>
+          <input type="tel" value={phone} onChange={e => setPhone(e.target.value)}
+            placeholder="For text alerts"
+            className="w-full px-3 py-2 rounded-lg border border-brand-border bg-white text-sm text-brand-dark focus:outline-none focus:ring-2 focus:ring-brand-dark/30 transition" />
+        </div>
+      </div>
+      <div>
+        <label className="text-xs text-gray-500 mb-1 block">Bio</label>
+        <input value={bio} onChange={e => setBio(e.target.value)}
+          className="w-full px-3 py-2 rounded-lg border border-brand-border bg-white text-sm text-brand-dark focus:outline-none focus:ring-2 focus:ring-brand-dark/30 transition" />
+      </div>
+      <div className="flex gap-2">
+        <button onClick={() => onSave(provider.id, email, phone, bio)}
+          className="text-xs px-4 py-2 bg-brand-dark text-white rounded-lg hover:bg-[#2a2a2a] transition">Save</button>
+        <button onClick={onCancel}
+          className="text-xs px-4 py-2 border border-brand-border text-gray-500 rounded-lg hover:bg-brand-surface transition">Cancel</button>
+      </div>
+    </div>
+  )
+}
+
 /* ── Main Component ────────────────────────── */
 
 export default function AdminPage() {
@@ -104,6 +150,13 @@ export default function AdminPage() {
   const [workingHours, setWorkingHours] = useState<WorkingHourRow[]>([])
   const [loadingHours, setLoadingHours] = useState(false)
   const [savingHourId, setSavingHourId] = useState<string | null>(null)
+
+  // Staff management state
+  const [showAddStaff, setShowAddStaff] = useState(false)
+  const [newStaff, setNewStaff] = useState({ firstName: '', lastName: '', email: '', phone: '', bio: '', bookingStatus: 'accepting_all' })
+  const [addingStaff, setAddingStaff] = useState(false)
+  const [editingProviderId, setEditingProviderId] = useState<string | null>(null)
+  const [confirmRemoveId, setConfirmRemoveId] = useState<string | null>(null)
 
   /* ── Data Fetching ─────────────────────────── */
 
@@ -161,6 +214,28 @@ export default function AdminPage() {
 
   const handleProviderStatusChange = async (providerId: string, status: string) => {
     await updateProviderStatus(providerId, status)
+    await fetchAvailability()
+  }
+
+  const handleAddStaff = async () => {
+    if (!newStaff.firstName.trim() || !newStaff.lastName.trim()) return
+    setAddingStaff(true)
+    await addProvider(newStaff)
+    setNewStaff({ firstName: '', lastName: '', email: '', phone: '', bio: '', bookingStatus: 'accepting_all' })
+    setShowAddStaff(false)
+    setAddingStaff(false)
+    await fetchAvailability()
+  }
+
+  const handleRemoveStaff = async (providerId: string) => {
+    await removeProvider(providerId)
+    setConfirmRemoveId(null)
+    await fetchAvailability()
+  }
+
+  const handleSaveProviderInfo = async (providerId: string, email: string, phone: string, bio: string) => {
+    await updateProviderInfo(providerId, { email: email || undefined, phone: phone || undefined, bio: bio || undefined })
+    setEditingProviderId(null)
     await fetchAvailability()
   }
 
@@ -519,8 +594,75 @@ export default function AdminPage() {
         {/* ═══════════════════ AVAILABILITY TAB ═══════════════════ */}
         {activeTab === 'availability' && (
           <div className="max-w-4xl mx-auto">
-            <h2 className="font-heading text-2xl text-brand-dark mb-2">Staff Availability</h2>
-            <p className="text-gray-500 mb-8">Manage working hours and booking status for each team member.</p>
+            <div className="flex items-center justify-between mb-8">
+              <div>
+                <h2 className="font-heading text-2xl text-brand-dark mb-1">Staff & Availability</h2>
+                <p className="text-gray-500">Manage team members, working hours, and booking status.</p>
+              </div>
+              <button
+                onClick={() => setShowAddStaff(true)}
+                className="px-5 py-2.5 bg-brand-dark text-white rounded-xl text-sm font-medium hover:bg-[#2a2a2a] transition flex items-center gap-2"
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" /></svg>
+                Add Staff
+              </button>
+            </div>
+
+            {/* Add Staff Form */}
+            {showAddStaff && (
+              <div className="bg-white border border-brand-border rounded-2xl p-6 mb-6">
+                <h3 className="font-heading text-lg text-brand-dark mb-4">Add New Staff Member</h3>
+                <div className="grid md:grid-cols-2 gap-4 mb-4">
+                  <div>
+                    <label className="text-sm text-gray-500 mb-1 block">First name *</label>
+                    <input value={newStaff.firstName} onChange={e => setNewStaff(s => ({ ...s, firstName: e.target.value }))}
+                      className="w-full px-4 py-2.5 rounded-xl border border-brand-border bg-white text-brand-dark focus:outline-none focus:ring-2 focus:ring-brand-dark/30 transition" />
+                  </div>
+                  <div>
+                    <label className="text-sm text-gray-500 mb-1 block">Last name *</label>
+                    <input value={newStaff.lastName} onChange={e => setNewStaff(s => ({ ...s, lastName: e.target.value }))}
+                      className="w-full px-4 py-2.5 rounded-xl border border-brand-border bg-white text-brand-dark focus:outline-none focus:ring-2 focus:ring-brand-dark/30 transition" />
+                  </div>
+                  <div>
+                    <label className="text-sm text-gray-500 mb-1 block">Email</label>
+                    <input type="email" value={newStaff.email} onChange={e => setNewStaff(s => ({ ...s, email: e.target.value }))}
+                      placeholder="For booking notifications"
+                      className="w-full px-4 py-2.5 rounded-xl border border-brand-border bg-white text-brand-dark placeholder:text-gray-300 focus:outline-none focus:ring-2 focus:ring-brand-dark/30 transition" />
+                  </div>
+                  <div>
+                    <label className="text-sm text-gray-500 mb-1 block">Phone</label>
+                    <input type="tel" value={newStaff.phone} onChange={e => setNewStaff(s => ({ ...s, phone: e.target.value }))}
+                      placeholder="For text alerts"
+                      className="w-full px-4 py-2.5 rounded-xl border border-brand-border bg-white text-brand-dark placeholder:text-gray-300 focus:outline-none focus:ring-2 focus:ring-brand-dark/30 transition" />
+                  </div>
+                </div>
+                <div className="mb-4">
+                  <label className="text-sm text-gray-500 mb-1 block">Bio</label>
+                  <input value={newStaff.bio} onChange={e => setNewStaff(s => ({ ...s, bio: e.target.value }))}
+                    placeholder="Short description shown to clients"
+                    className="w-full px-4 py-2.5 rounded-xl border border-brand-border bg-white text-brand-dark placeholder:text-gray-300 focus:outline-none focus:ring-2 focus:ring-brand-dark/30 transition" />
+                </div>
+                <div className="mb-5">
+                  <label className="text-sm text-gray-500 mb-1 block">Booking status</label>
+                  <select value={newStaff.bookingStatus} onChange={e => setNewStaff(s => ({ ...s, bookingStatus: e.target.value }))}
+                    className="px-4 py-2.5 rounded-xl border border-brand-border bg-white text-sm text-brand-dark focus:outline-none focus:ring-2 focus:ring-brand-dark/30">
+                    <option value="accepting_all">Accepting all bookings</option>
+                    <option value="referral_only">Referral only</option>
+                    <option value="closed">Not accepting</option>
+                  </select>
+                </div>
+                <div className="flex gap-3">
+                  <button onClick={handleAddStaff} disabled={addingStaff || !newStaff.firstName.trim() || !newStaff.lastName.trim()}
+                    className="px-6 py-2.5 bg-brand-dark text-white rounded-xl text-sm font-medium hover:bg-[#2a2a2a] transition disabled:opacity-40">
+                    {addingStaff ? 'Adding...' : 'Add Staff Member'}
+                  </button>
+                  <button onClick={() => setShowAddStaff(false)}
+                    className="px-6 py-2.5 border border-brand-border text-brand-dark rounded-xl text-sm font-medium hover:bg-brand-surface transition">
+                    Cancel
+                  </button>
+                </div>
+              </div>
+            )}
 
             {loadingHours && (
               <div className="text-center py-12 text-gray-400">
@@ -531,22 +673,77 @@ export default function AdminPage() {
 
             {!loadingHours && providers.map(provider => {
               const hours = workingHours.filter(h => h.provider_id === provider.id)
+              const isEditing = editingProviderId === provider.id
 
               return (
                 <div key={provider.id} className="bg-white border border-brand-border rounded-2xl mb-6 overflow-hidden">
                   {/* Provider header */}
-                  <div className="p-5 border-b border-brand-border flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-full bg-brand-surface flex items-center justify-center font-heading font-bold text-brand-dark">
-                        {provider.first_name[0]}
+                  <div className="p-5 border-b border-brand-border">
+                    <div className="flex items-center justify-between mb-3">
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-full bg-brand-surface flex items-center justify-center font-heading font-bold text-brand-dark">
+                          {provider.first_name[0]}
+                        </div>
+                        <div>
+                          <h3 className="font-heading text-lg text-brand-dark">{provider.first_name} {provider.last_name}</h3>
+                          <p className="text-xs text-gray-400">{provider.bio || 'Team member'}</p>
+                        </div>
                       </div>
-                      <div>
-                        <h3 className="font-heading text-lg text-brand-dark">{provider.first_name} {provider.last_name}</h3>
-                        <p className="text-xs text-gray-400">{provider.bio || 'Team member'}</p>
+                      <div className="flex items-center gap-2">
+                        <button onClick={() => setEditingProviderId(isEditing ? null : provider.id)}
+                          className="text-xs px-3 py-1.5 rounded-lg border border-brand-border text-gray-500 hover:bg-brand-surface transition">
+                          {isEditing ? 'Cancel' : 'Edit Info'}
+                        </button>
+                        {confirmRemoveId === provider.id ? (
+                          <div className="flex items-center gap-1">
+                            <span className="text-xs text-red-600 mr-1">Remove?</span>
+                            <button onClick={() => handleRemoveStaff(provider.id)}
+                              className="text-xs px-3 py-1.5 rounded-lg bg-red-500 text-white hover:bg-red-600 transition">Yes</button>
+                            <button onClick={() => setConfirmRemoveId(null)}
+                              className="text-xs px-3 py-1.5 rounded-lg border border-brand-border text-gray-500 hover:bg-brand-surface transition">No</button>
+                          </div>
+                        ) : (
+                          <button onClick={() => setConfirmRemoveId(provider.id)}
+                            className="text-xs px-3 py-1.5 rounded-lg border border-red-200 text-red-500 hover:bg-red-50 transition">
+                            Remove
+                          </button>
+                        )}
                       </div>
                     </div>
-                    <div className="flex items-center gap-2">
-                      <label className="text-xs text-gray-500 mr-1">Status:</label>
+
+                    {/* Contact info row */}
+                    {!isEditing && (
+                      <div className="flex flex-wrap gap-4 text-sm text-gray-500 ml-[52px]">
+                        {provider.email && (
+                          <span className="flex items-center gap-1">
+                            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" /></svg>
+                            {provider.email}
+                          </span>
+                        )}
+                        {provider.phone && (
+                          <span className="flex items-center gap-1">
+                            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" /></svg>
+                            {fmtPhone(provider.phone)}
+                          </span>
+                        )}
+                        {!provider.email && !provider.phone && (
+                          <span className="text-gray-400 italic">No contact info — click Edit Info to add</span>
+                        )}
+                      </div>
+                    )}
+
+                    {/* Edit form */}
+                    {isEditing && (
+                      <EditProviderForm
+                        provider={provider}
+                        onSave={handleSaveProviderInfo}
+                        onCancel={() => setEditingProviderId(null)}
+                      />
+                    )}
+
+                    {/* Booking status */}
+                    <div className="flex items-center gap-2 mt-3 ml-[52px]">
+                      <label className="text-xs text-gray-500">Status:</label>
                       <select
                         value={provider.booking_status}
                         onChange={e => handleProviderStatusChange(provider.id, e.target.value)}
@@ -563,33 +760,22 @@ export default function AdminPage() {
                   <div className="divide-y divide-brand-border">
                     {hours.sort((a, b) => a.day_of_week - b.day_of_week).map(row => (
                       <div key={row.id} className={`px-5 py-3 flex items-center gap-4 ${!row.is_working ? 'opacity-50' : ''} ${savingHourId === row.id ? 'bg-brand-surface/50' : ''}`}>
-                        {/* Day name */}
                         <span className="w-24 text-sm font-medium text-brand-dark">{DAY_NAMES[row.day_of_week]}</span>
-
-                        {/* Toggle */}
                         <button
                           onClick={() => handleHourToggle(row)}
                           className={`relative w-10 h-6 rounded-full transition-colors ${row.is_working ? 'bg-green-500' : 'bg-gray-300'}`}
                         >
                           <span className={`absolute top-0.5 w-5 h-5 rounded-full bg-white shadow transition-transform ${row.is_working ? 'left-[18px]' : 'left-0.5'}`} />
                         </button>
-
-                        {/* Time pickers */}
                         {row.is_working ? (
                           <div className="flex items-center gap-2 flex-1">
-                            <input
-                              type="time"
-                              value={row.start_time.slice(0, 5)}
+                            <input type="time" value={row.start_time.slice(0, 5)}
                               onChange={e => handleHourChange(row, 'start_time', e.target.value)}
-                              className="px-3 py-1.5 rounded-lg border border-brand-border bg-white text-sm text-brand-dark focus:outline-none focus:ring-2 focus:ring-brand-dark/30"
-                            />
+                              className="px-3 py-1.5 rounded-lg border border-brand-border bg-white text-sm text-brand-dark focus:outline-none focus:ring-2 focus:ring-brand-dark/30" />
                             <span className="text-gray-400 text-sm">to</span>
-                            <input
-                              type="time"
-                              value={row.end_time.slice(0, 5)}
+                            <input type="time" value={row.end_time.slice(0, 5)}
                               onChange={e => handleHourChange(row, 'end_time', e.target.value)}
-                              className="px-3 py-1.5 rounded-lg border border-brand-border bg-white text-sm text-brand-dark focus:outline-none focus:ring-2 focus:ring-brand-dark/30"
-                            />
+                              className="px-3 py-1.5 rounded-lg border border-brand-border bg-white text-sm text-brand-dark focus:outline-none focus:ring-2 focus:ring-brand-dark/30" />
                           </div>
                         ) : (
                           <span className="text-sm text-gray-400 flex-1">Day off</span>

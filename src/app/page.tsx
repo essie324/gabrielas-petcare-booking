@@ -172,7 +172,6 @@ export default function Home() {
               <h4 className="font-heading text-[1.1rem] mb-[18px]">Contact</h4>
               <ul className="space-y-2.5">
                 <li><a href="mailto:gabrielaspremierpetcare@gmail.com" className="text-[#c9c6be] hover:text-white transition">gabrielaspremierpetcare@gmail.com</a></li>
-                <li><a href="tel:+14076987386" className="text-[#c9c6be] hover:text-white transition">(407) 698-7386</a></li>
                 <li className="text-[#c9c6be]">Orlando, FL</li>
               </ul>
             </div>

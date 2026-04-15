@@ -49,11 +49,6 @@ export default function ContactPage() {
                 gabrielaspremierpetcare@gmail.com
               </a>
             </p>
-            <p className="mb-6">
-              <a href="tel:+14076987386" className="text-brand-dark underline hover:no-underline">
-                (407) 698-7386
-              </a>
-            </p>
             <p className="text-[#444] mb-8">Fill out the contact form below and I&apos;ll get back to you as soon as possible.</p>
 
             {submitted ? (
@@ -155,7 +150,6 @@ export default function ContactPage() {
               <h4 className="font-heading text-[1.1rem] mb-[18px]">Contact</h4>
               <ul className="space-y-2.5">
                 <li><a href="mailto:gabrielaspremierpetcare@gmail.com" className="text-[#c9c6be] hover:text-white transition">gabrielaspremierpetcare@gmail.com</a></li>
-                <li><a href="tel:+14076987386" className="text-[#c9c6be] hover:text-white transition">(407) 698-7386</a></li>
                 <li className="text-[#c9c6be]">Orlando, FL</li>
               </ul>
             </div>

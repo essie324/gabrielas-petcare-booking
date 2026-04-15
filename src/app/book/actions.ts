@@ -2,6 +2,7 @@
 
 import { createServerClient } from '@supabase/ssr'
 import { cookies } from 'next/headers'
+import { sendEmail, buildClientConfirmationEmail, buildStaffNotificationEmail } from '@/lib/email'
 
 function generateBookingRef(): string {
   const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'
@@ -113,6 +114,48 @@ export async function bookAppointmentFromFlow(data: BookingData) {
       .single()
 
     if (aptError) throw aptError
+
+    // Get service and provider names for emails
+    const { data: service } = await supabase.from('services').select('name').eq('id', data.serviceId).single()
+    const { data: provider } = await supabase.from('providers').select('first_name, last_name, email').eq('id', data.providerId).single()
+
+    const serviceName = service?.name || 'Pet Care'
+    const providerName = provider ? `${provider.first_name} ${provider.last_name}` : 'Staff'
+
+    // Send client confirmation email
+    if (data.email) {
+      const clientEmail = buildClientConfirmationEmail({
+        clientName: `${data.firstName} ${data.lastName}`,
+        serviceName,
+        providerName,
+        date: data.date,
+        time: data.time,
+        bookingRef,
+      })
+      sendEmail({ to: data.email, ...clientEmail }).catch(console.error)
+    }
+
+    // Send staff notification emails
+    const { data: allProviders } = await supabase.from('providers').select('email, first_name').eq('active', true)
+    const staffEmails = (allProviders || []).filter(p => p.email).map(p => p.email as string)
+
+    const staffNotification = buildStaffNotificationEmail({
+      clientName: `${data.firstName} ${data.lastName}`,
+      clientEmail: data.email,
+      clientPhone: data.phone,
+      petName: data.petName,
+      petType: data.petType,
+      petNotes: data.petNotes,
+      serviceName,
+      providerName,
+      date: data.date,
+      time: data.time,
+      bookingRef,
+    })
+
+    for (const email of staffEmails) {
+      sendEmail({ to: email, ...staffNotification }).catch(console.error)
+    }
 
     return {
       success: true,

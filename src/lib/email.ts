@@ -154,15 +154,17 @@ export function buildGoogleCalendarUrl(data: {
   bookingRef: string
   location?: string
 }): string {
-  const start = new Date(`${data.date}T${data.time}:00`)
-  const end = new Date(start.getTime() + data.durationMinutes * 60000)
+  // Format as local time strings (no UTC conversion) so Google interprets with the ctz parameter
+  const startStr = data.date.replace(/-/g, '') + 'T' + data.time.replace(':', '') + '00'
+  const startDate = new Date(`${data.date}T${data.time}:00`)
+  const endDate = new Date(startDate.getTime() + data.durationMinutes * 60000)
+  const endStr = `${endDate.getFullYear()}${pad2(endDate.getMonth() + 1)}${pad2(endDate.getDate())}T${pad2(endDate.getHours())}${pad2(endDate.getMinutes())}00`
 
-  const fmt = (d: Date) => d.toISOString().replace(/[-:]/g, '').replace(/\.\d{3}/, '')
   const title = encodeURIComponent(`${data.serviceName} - Gabriela's Pet Care`)
   const details = encodeURIComponent(`Provider: ${data.providerName}\nRef: ${data.bookingRef}`)
   const loc = encodeURIComponent(data.location || 'Orlando, FL')
 
-  return `https://calendar.google.com/calendar/r/eventedit?text=${title}&dates=${fmt(start)}/${fmt(end)}&details=${details}&location=${loc}`
+  return `https://calendar.google.com/calendar/r/eventedit?text=${title}&dates=${startStr}/${endStr}&ctz=America/New_York&details=${details}&location=${loc}`
 }
 
 export function buildClientConfirmationEmail(data: {
@@ -214,8 +216,28 @@ export function buildClientConfirmationEmail(data: {
 
         <div style="margin-top: 20px; text-align: center;">
           <p style="color: #888; font-size: 13px; margin: 0 0 12px;">Add this appointment to your calendar:</p>
-          <a href="${googleUrl}" target="_blank" style="display: inline-block; padding: 10px 20px; background: #0e0e0e; color: white; text-decoration: none; border-radius: 8px; font-size: 14px; margin: 0 4px 8px;">Google Calendar</a>
-          <a href="${icsUrl}" style="display: inline-block; padding: 10px 20px; background: #0e0e0e; color: white; text-decoration: none; border-radius: 8px; font-size: 14px; margin: 0 4px 8px;">Apple / Outlook</a>
+          <table role="presentation" cellspacing="0" cellpadding="0" border="0" align="center" style="margin: 0 auto;">
+            <tr>
+              <td style="padding: 0 4px 8px;">
+                <table role="presentation" cellspacing="0" cellpadding="0" border="0">
+                  <tr>
+                    <td style="background: #0e0e0e; border-radius: 8px;">
+                      <a href="${googleUrl}" target="_blank" style="display: block; padding: 10px 20px; color: #ffffff; text-decoration: none; font-family: Georgia, serif; font-size: 14px;">📅 Google Calendar</a>
+                    </td>
+                  </tr>
+                </table>
+              </td>
+              <td style="padding: 0 4px 8px;">
+                <table role="presentation" cellspacing="0" cellpadding="0" border="0">
+                  <tr>
+                    <td style="background: #0e0e0e; border-radius: 8px;">
+                      <a href="${icsUrl}" target="_blank" style="display: block; padding: 10px 20px; color: #ffffff; text-decoration: none; font-family: Georgia, serif; font-size: 14px;">🍎 Apple / Outlook</a>
+                    </td>
+                  </tr>
+                </table>
+              </td>
+            </tr>
+          </table>
         </div>
 
         <p style="color: #888; font-size: 13px; text-align: center; margin: 24px 0 0;">We can't wait to meet your pet! 🐾</p>

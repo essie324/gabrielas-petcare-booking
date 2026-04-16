@@ -195,39 +195,30 @@ export function buildClientConfirmationEmail(data: {
   })
 
   return {
-    subject: `Booking Confirmed — ${data.bookingRef}`,
-    html: `
-      <div style="font-family: Georgia, serif; max-width: 520px; margin: 0 auto; background: #f2efe9; padding: 40px 32px; border-radius: 16px;">
-        <h1 style="font-size: 24px; color: #0e0e0e; margin: 0 0 8px;">You're All Set!</h1>
-        <p style="color: #666; margin: 0 0 24px;">Your appointment has been confirmed.</p>
-
-        <div style="background: white; border-radius: 12px; padding: 24px; border: 1px solid rgba(0,0,0,0.08);">
-          <table style="width: 100%; border-collapse: collapse;">
-            <tr><td style="padding: 8px 0; color: #888; font-size: 14px;">Service</td><td style="padding: 8px 0; color: #0e0e0e; font-weight: 600; text-align: right; font-size: 14px;">${data.serviceName}</td></tr>
-            <tr><td style="padding: 8px 0; color: #888; font-size: 14px;">Date</td><td style="padding: 8px 0; color: #0e0e0e; font-weight: 600; text-align: right; font-size: 14px;">${formattedDate}</td></tr>
-            <tr><td style="padding: 8px 0; color: #888; font-size: 14px;">Time</td><td style="padding: 8px 0; color: #0e0e0e; font-weight: 600; text-align: right; font-size: 14px;">${formattedTime}</td></tr>
-            <tr><td style="padding: 8px 0; color: #888; font-size: 14px;">Provider</td><td style="padding: 8px 0; color: #0e0e0e; font-weight: 600; text-align: right; font-size: 14px;">${data.providerName}</td></tr>
-          </table>
-          <div style="border-top: 1px solid rgba(0,0,0,0.08); margin-top: 16px; padding-top: 16px; text-align: center;">
-            <p style="color: #888; font-size: 12px; text-transform: uppercase; letter-spacing: 1px; margin: 0 0 4px;">Booking Reference</p>
-            <p style="font-size: 22px; font-weight: bold; color: #0e0e0e; margin: 0;">${data.bookingRef}</p>
-          </div>
-        </div>
-
-        <div style="background: white; border-radius: 12px; padding: 24px; border: 1px solid rgba(0,0,0,0.08); margin-top: 20px; text-align: center;">
-          <p style="color: #0e0e0e; font-size: 14px; font-weight: 600; margin: 0 0 16px;">Add to Your Calendar</p>
-          <p style="margin: 0 0 10px;">
-            <a href="${googleUrl}" target="_blank" style="color: #0e0e0e; font-size: 14px; text-decoration: underline;">Add to Google Calendar</a>
-          </p>
-          <p style="margin: 0;">
-            <a href="${icsUrl}" target="_blank" style="color: #0e0e0e; font-size: 14px; text-decoration: underline;">Download for Apple Calendar / Outlook</a>
-          </p>
-        </div>
-
-        <p style="color: #888; font-size: 13px; text-align: center; margin: 24px 0 0;">We can't wait to meet your pet! 🐾</p>
-        <p style="color: #aaa; font-size: 12px; text-align: center; margin: 8px 0 0;">Gabriela's Premier Pet Care · Orlando, FL</p>
-      </div>
-    `,
+    subject: `Confirmed! ${data.bookingRef} - ${data.serviceName}`,
+    html: `<div style="font-family: Georgia, serif; max-width: 520px; margin: 0 auto; background: #f2efe9; padding: 40px 32px; border-radius: 16px;">
+<h1 style="font-size: 24px; color: #0e0e0e; margin: 0 0 8px;">You're All Set!</h1>
+<p style="color: #666; margin: 0 0 24px;">Your appointment has been confirmed.</p>
+<div style="background: white; border-radius: 12px; padding: 24px; border: 1px solid rgba(0,0,0,0.08);">
+<table style="width: 100%; border-collapse: collapse;">
+<tr><td style="padding: 8px 0; color: #888; font-size: 14px;">Service</td><td style="padding: 8px 0; color: #0e0e0e; font-weight: 600; text-align: right; font-size: 14px;">${data.serviceName}</td></tr>
+<tr><td style="padding: 8px 0; color: #888; font-size: 14px;">Date</td><td style="padding: 8px 0; color: #0e0e0e; font-weight: 600; text-align: right; font-size: 14px;">${formattedDate}</td></tr>
+<tr><td style="padding: 8px 0; color: #888; font-size: 14px;">Time</td><td style="padding: 8px 0; color: #0e0e0e; font-weight: 600; text-align: right; font-size: 14px;">${formattedTime}</td></tr>
+<tr><td style="padding: 8px 0; color: #888; font-size: 14px;">Provider</td><td style="padding: 8px 0; color: #0e0e0e; font-weight: 600; text-align: right; font-size: 14px;">${data.providerName}</td></tr>
+</table>
+<div style="border-top: 1px solid rgba(0,0,0,0.08); margin-top: 16px; padding-top: 16px; text-align: center;">
+<p style="color: #888; font-size: 12px; text-transform: uppercase; letter-spacing: 1px; margin: 0 0 4px;">Booking Reference</p>
+<p style="font-size: 22px; font-weight: bold; color: #0e0e0e; margin: 0;">${data.bookingRef}</p>
+</div>
+</div>
+<div style="background: white; border-radius: 12px; padding: 24px; border: 1px solid rgba(0,0,0,0.08); margin-top: 20px;">
+<p style="color: #0e0e0e; font-size: 15px; font-weight: bold; margin: 0 0 12px;">Add to Your Calendar:</p>
+<p style="color: #0e0e0e; font-size: 14px; margin: 0 0 8px;">Google Calendar: <a href="${googleUrl}" style="color: #1a73e8;">${googleUrl}</a></p>
+<p style="color: #0e0e0e; font-size: 14px; margin: 0;">Apple/Outlook: <a href="${icsUrl}" style="color: #1a73e8;">${icsUrl}</a></p>
+</div>
+<p style="color: #888; font-size: 13px; text-align: center; margin: 24px 0 0;">We can't wait to meet your pet!</p>
+<p style="color: #aaa; font-size: 12px; text-align: center; margin: 8px 0 0;">Gabriela's Premier Pet Care - Orlando, FL</p>
+</div>`,
   }
 }
 

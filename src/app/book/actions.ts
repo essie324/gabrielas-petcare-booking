@@ -2,7 +2,7 @@
 
 import { createServerClient } from '@supabase/ssr'
 import { cookies } from 'next/headers'
-import { sendEmail, buildClientConfirmationEmail, buildStaffNotificationEmail } from '@/lib/email'
+import { sendEmail, buildClientConfirmationEmail, buildStaffNotificationEmail, buildICSInvite } from '@/lib/email'
 
 function generateBookingRef(): string {
   const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'
@@ -116,13 +116,27 @@ export async function bookAppointmentFromFlow(data: BookingData) {
     if (aptError) throw aptError
 
     // Get service and provider names for emails
-    const { data: service } = await supabase.from('services').select('name').eq('id', data.serviceId).single()
+    const { data: service } = await supabase.from('services').select('name, duration_minutes').eq('id', data.serviceId).single()
     const { data: provider } = await supabase.from('providers').select('first_name, last_name, email').eq('id', data.providerId).single()
 
     const serviceName = service?.name || 'Pet Care'
     const providerName = provider ? `${provider.first_name} ${provider.last_name}` : 'Staff'
+    const durationMinutes = service?.duration_minutes || data.serviceDuration
 
-    // Send client confirmation email
+    // Generate ICS calendar invite
+    const icsContent = buildICSInvite({
+      serviceName,
+      providerName,
+      clientName: `${data.firstName} ${data.lastName}`,
+      petName: data.petName || undefined,
+      date: data.date,
+      time: data.time,
+      durationMinutes,
+      bookingRef,
+    })
+    const icsAttachment = [{ filename: `appointment-${bookingRef}.ics`, content: icsContent }]
+
+    // Send client confirmation email with calendar invite
     if (data.email) {
       const clientEmail = buildClientConfirmationEmail({
         clientName: `${data.firstName} ${data.lastName}`,
@@ -132,10 +146,10 @@ export async function bookAppointmentFromFlow(data: BookingData) {
         time: data.time,
         bookingRef,
       })
-      sendEmail({ to: data.email, ...clientEmail }).catch(console.error)
+      sendEmail({ to: data.email, ...clientEmail, attachments: icsAttachment }).catch(console.error)
     }
 
-    // Send staff notification emails
+    // Send staff notification emails with calendar invite
     const { data: allProviders } = await supabase.from('providers').select('email, first_name').eq('active', true)
     const staffEmails = (allProviders || []).filter(p => p.email).map(p => p.email as string)
 
@@ -154,7 +168,7 @@ export async function bookAppointmentFromFlow(data: BookingData) {
     })
 
     for (const email of staffEmails) {
-      sendEmail({ to: email, ...staffNotification }).catch(console.error)
+      sendEmail({ to: email, ...staffNotification, attachments: icsAttachment }).catch(console.error)
     }
 
     return {

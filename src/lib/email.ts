@@ -145,18 +145,52 @@ export function buildICSInvite(data: {
   ].join('\r\n')
 }
 
+export function buildGoogleCalendarUrl(data: {
+  serviceName: string
+  providerName: string
+  date: string
+  time: string
+  durationMinutes: number
+  bookingRef: string
+  location?: string
+}): string {
+  const start = new Date(`${data.date}T${data.time}:00`)
+  const end = new Date(start.getTime() + data.durationMinutes * 60000)
+
+  const fmt = (d: Date) => d.toISOString().replace(/[-:]/g, '').replace(/\.\d{3}/, '')
+  const title = encodeURIComponent(`${data.serviceName} - Gabriela's Pet Care`)
+  const details = encodeURIComponent(`Provider: ${data.providerName}\nRef: ${data.bookingRef}`)
+  const loc = encodeURIComponent(data.location || 'Orlando, FL')
+
+  return `https://calendar.google.com/calendar/r/eventedit?text=${title}&dates=${fmt(start)}/${fmt(end)}&details=${details}&location=${loc}`
+}
+
 export function buildClientConfirmationEmail(data: {
   clientName: string
   serviceName: string
   providerName: string
   date: string
   time: string
+  durationMinutes: number
   bookingRef: string
+  siteUrl: string
+  location?: string
 }) {
   const dateObj = new Date(data.date + 'T' + data.time + ':00')
   const formattedDate = dateObj.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })
   const h = dateObj.getHours(), m = dateObj.getMinutes()
   const formattedTime = `${h % 12 || 12}:${String(m).padStart(2, '0')} ${h < 12 ? 'AM' : 'PM'}`
+
+  const icsUrl = `${data.siteUrl}/api/calendar?ref=${encodeURIComponent(data.bookingRef)}`
+  const googleUrl = buildGoogleCalendarUrl({
+    serviceName: data.serviceName,
+    providerName: data.providerName,
+    date: data.date,
+    time: data.time,
+    durationMinutes: data.durationMinutes,
+    bookingRef: data.bookingRef,
+    location: data.location,
+  })
 
   return {
     subject: `Booking Confirmed — ${data.bookingRef}`,
@@ -176,6 +210,12 @@ export function buildClientConfirmationEmail(data: {
             <p style="color: #888; font-size: 12px; text-transform: uppercase; letter-spacing: 1px; margin: 0 0 4px;">Booking Reference</p>
             <p style="font-size: 22px; font-weight: bold; color: #0e0e0e; margin: 0;">${data.bookingRef}</p>
           </div>
+        </div>
+
+        <div style="margin-top: 20px; text-align: center;">
+          <p style="color: #888; font-size: 13px; margin: 0 0 12px;">Add this appointment to your calendar:</p>
+          <a href="${googleUrl}" target="_blank" style="display: inline-block; padding: 10px 20px; background: #0e0e0e; color: white; text-decoration: none; border-radius: 8px; font-size: 14px; margin: 0 4px 8px;">Google Calendar</a>
+          <a href="${icsUrl}" style="display: inline-block; padding: 10px 20px; background: #0e0e0e; color: white; text-decoration: none; border-radius: 8px; font-size: 14px; margin: 0 4px 8px;">Apple / Outlook</a>
         </div>
 
         <p style="color: #888; font-size: 13px; text-align: center; margin: 24px 0 0;">We can't wait to meet your pet! 🐾</p>

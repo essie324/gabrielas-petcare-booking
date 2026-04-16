@@ -2,7 +2,7 @@
 
 import { createServerClient } from '@supabase/ssr'
 import { cookies } from 'next/headers'
-import { sendEmail, buildClientConfirmationEmail, buildStaffNotificationEmail, buildICSInvite } from '@/lib/email'
+import { sendEmail, buildClientConfirmationEmail, buildStaffNotificationEmail } from '@/lib/email'
 
 function generateBookingRef(): string {
   const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'
@@ -158,21 +158,9 @@ export async function bookAppointmentFromFlow(data: BookingData) {
     const providerName = provider ? `${provider.first_name} ${provider.last_name}` : 'Staff'
     const durationMinutes = service?.duration_minutes || data.serviceDuration
 
-    // Generate ICS calendar invite
-    const icsContent = buildICSInvite({
-      serviceName,
-      providerName,
-      clientName: `${data.firstName} ${data.lastName}`,
-      petName: data.petName || undefined,
-      date: data.date,
-      time: data.time,
-      durationMinutes,
-      bookingRef,
-      location: data.address || undefined,
-    })
-    const icsAttachment = [{ filename: `appointment-${bookingRef}.ics`, content: icsContent, content_type: 'text/calendar; method=PUBLISH' }]
+    // Send client confirmation email with calendar links
+    const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://gabrielaspremierpetcare.com'
 
-    // Send client confirmation email with calendar invite
     if (data.email) {
       const clientEmail = buildClientConfirmationEmail({
         clientName: `${data.firstName} ${data.lastName}`,
@@ -180,9 +168,12 @@ export async function bookAppointmentFromFlow(data: BookingData) {
         providerName,
         date: data.date,
         time: data.time,
+        durationMinutes,
         bookingRef,
+        siteUrl,
+        location: data.address || undefined,
       })
-      sendEmail({ to: data.email, ...clientEmail, attachments: icsAttachment }).catch(console.error)
+      sendEmail({ to: data.email, ...clientEmail }).catch(console.error)
     }
 
     // Send staff notification emails with calendar invite
@@ -205,7 +196,7 @@ export async function bookAppointmentFromFlow(data: BookingData) {
     })
 
     for (const email of staffEmails) {
-      sendEmail({ to: email, ...staffNotification, attachments: icsAttachment }).catch(console.error)
+      sendEmail({ to: email, ...staffNotification }).catch(console.error)
     }
 
     return {

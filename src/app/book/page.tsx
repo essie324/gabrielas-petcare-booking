@@ -162,6 +162,7 @@ export default function BookPage() {
                   lastName: details.lastName,
                   email: details.email,
                   phone: details.phone,
+                  address: details.address,
                   petName: details.petName,
                   petType: details.petType,
                   petNotes: details.petBreed

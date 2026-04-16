@@ -152,6 +152,7 @@ export function buildStaffNotificationEmail(data: {
   clientName: string
   clientEmail: string
   clientPhone: string
+  clientAddress: string
   petName: string
   petType: string
   petNotes: string
@@ -188,6 +189,7 @@ export function buildStaffNotificationEmail(data: {
           <p style="color: #0e0e0e; font-weight: 600; margin: 0 0 4px;">${data.clientName}</p>
           ${data.clientEmail ? `<p style="color: #666; font-size: 14px; margin: 0 0 2px;">${data.clientEmail}</p>` : ''}
           ${data.clientPhone ? `<p style="color: #666; font-size: 14px; margin: 0 0 2px;">${data.clientPhone}</p>` : ''}
+          ${data.clientAddress ? `<p style="color: #666; font-size: 14px; margin: 0 0 2px;">📍 ${data.clientAddress}</p>` : ''}
         </div>
 
         ${data.petName || data.petType ? `

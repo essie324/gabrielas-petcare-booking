@@ -226,7 +226,7 @@ export async function updateClient(
   clientId: string,
   updates: {
     first_name?: string; last_name?: string
-    email?: string; phone?: string
+    email?: string; phone?: string; address?: string
     pet_name?: string; pet_type?: string; pet_notes?: string
     profile_photo_url?: string
   }

@@ -46,7 +46,7 @@ interface ProviderInfo {
 
 interface ClientInfo {
   id: string; first_name: string; last_name: string
-  email: string | null; phone: string | null
+  email: string | null; phone: string | null; address: string | null
   pet_name: string | null; pet_type: string | null; pet_notes: string | null
   profile_photo_url: string | null
   created_at: string
@@ -596,6 +596,7 @@ export default function AdminPage() {
                           last_name: fd.get('last_name') as string,
                           email: (fd.get('email') as string) || undefined,
                           phone: (fd.get('phone') as string) || undefined,
+                          address: (fd.get('address') as string) || undefined,
                           pet_name: (fd.get('pet_name') as string) || undefined,
                           pet_type: (fd.get('pet_type') as string) || undefined,
                           pet_notes: (fd.get('pet_notes') as string) || undefined,
@@ -605,6 +606,7 @@ export default function AdminPage() {
                           last_name: fd.get('last_name') as string,
                           email: (fd.get('email') as string) || null,
                           phone: (fd.get('phone') as string) || null,
+                          address: (fd.get('address') as string) || null,
                           pet_name: (fd.get('pet_name') as string) || null,
                           pet_type: (fd.get('pet_type') as string) || null,
                           pet_notes: (fd.get('pet_notes') as string) || null,
@@ -633,6 +635,12 @@ export default function AdminPage() {
                         <div>
                           <label className="text-xs text-gray-500 mb-1 block">Phone</label>
                           <input name="phone" type="tel" defaultValue={selectedClient.phone || ''}
+                            className="w-full px-3 py-2 rounded-lg border border-brand-border bg-white text-sm text-brand-dark focus:outline-none focus:ring-2 focus:ring-brand-dark/30 transition" />
+                        </div>
+                        <div>
+                          <label className="text-xs text-gray-500 mb-1 block">Address</label>
+                          <input name="address" defaultValue={selectedClient.address || ''}
+                            placeholder="Street address, city, zip"
                             className="w-full px-3 py-2 rounded-lg border border-brand-border bg-white text-sm text-brand-dark focus:outline-none focus:ring-2 focus:ring-brand-dark/30 transition" />
                         </div>
                         <hr className="border-brand-border" />
@@ -668,6 +676,12 @@ export default function AdminPage() {
                           <div className="flex items-center gap-3 text-sm">
                             <svg className="w-4 h-4 text-gray-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" /></svg>
                             <span className="text-brand-dark">{fmtPhone(selectedClient.phone)}</span>
+                          </div>
+                        )}
+                        {selectedClient.address && (
+                          <div className="flex items-center gap-3 text-sm">
+                            <svg className="w-4 h-4 text-gray-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
+                            <span className="text-brand-dark">{selectedClient.address}</span>
                           </div>
                         )}
 

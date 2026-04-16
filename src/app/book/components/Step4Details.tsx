@@ -12,6 +12,7 @@ interface Props {
     lastName: string
     email: string
     phone: string
+    address: string
     petName: string
     petType: string
     petBreed: string
@@ -32,6 +33,7 @@ export default function Step4Details({
   const [lastName, setLastName] = useState(existingClient?.last_name || '')
   const [email, setEmail] = useState(existingClient?.email || defaultEmail || '')
   const [phone, setPhone] = useState(existingClient?.phone || defaultPhone || '')
+  const [address, setAddress] = useState((existingClient as unknown as { address?: string })?.address || '')
   const [petName, setPetName] = useState(existingClient?.pet_name || '')
   const [petType, setPetType] = useState(existingClient?.pet_type || '')
   const [petBreed, setPetBreed] = useState('')
@@ -105,6 +107,15 @@ export default function Step4Details({
               value={phone}
               onChange={e => setPhone(e.target.value)}
               className="w-full px-4 py-2.5 rounded-xl border border-brand-border bg-white text-brand-dark focus:outline-none focus:ring-2 focus:ring-brand-dark/30 focus:border-brand-dark transition"
+            />
+          </div>
+          <div>
+            <label className="text-sm text-gray-500 mb-1 block">Address</label>
+            <input
+              value={address}
+              onChange={e => setAddress(e.target.value)}
+              placeholder="Street address, city, zip"
+              className="w-full px-4 py-2.5 rounded-xl border border-brand-border bg-white text-brand-dark placeholder:text-gray-300 focus:outline-none focus:ring-2 focus:ring-brand-dark/30 focus:border-brand-dark transition"
             />
           </div>
         </div>
@@ -192,6 +203,7 @@ export default function Step4Details({
             lastName: lastName.trim(),
             email: email.trim(),
             phone: phone.trim(),
+            address: address.trim(),
             petName: petName.trim(),
             petType,
             petBreed: petBreed.trim(),

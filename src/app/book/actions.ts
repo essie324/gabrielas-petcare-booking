@@ -36,6 +36,7 @@ interface BookingData {
   lastName: string
   email: string
   phone: string
+  address: string
   petName: string
   petType: string
   petNotes: string
@@ -69,6 +70,7 @@ export async function bookAppointmentFromFlow(data: BookingData) {
           last_name: data.lastName,
           email: data.email.toLowerCase() || null,
           phone: data.phone.replace(/\D/g, '') || null,
+          address: data.address || null,
           pet_name: data.petName || null,
           pet_type: data.petType || null,
           pet_notes: data.petNotes || null,
@@ -83,6 +85,7 @@ export async function bookAppointmentFromFlow(data: BookingData) {
       await supabase
         .from('clients')
         .update({
+          address: data.address || undefined,
           pet_name: data.petName || undefined,
           pet_type: data.petType || undefined,
           pet_notes: data.petNotes || undefined,
@@ -133,6 +136,7 @@ export async function bookAppointmentFromFlow(data: BookingData) {
       time: data.time,
       durationMinutes,
       bookingRef,
+      location: data.address || undefined,
     })
     const icsAttachment = [{ filename: `appointment-${bookingRef}.ics`, content: icsContent }]
 
@@ -157,6 +161,7 @@ export async function bookAppointmentFromFlow(data: BookingData) {
       clientName: `${data.firstName} ${data.lastName}`,
       clientEmail: data.email,
       clientPhone: data.phone,
+      clientAddress: data.address,
       petName: data.petName,
       petType: data.petType,
       petNotes: data.petNotes,

@@ -158,14 +158,22 @@ export default function BookPage() {
 
                 if (!providerId) return
 
-                // Build pet notes with breed, count, and additional pets info
+                // Primary pet from first entry
+                const primaryPet = details.pets[0] || { name: '', type: '', breed: '', allergies: '', healthNotes: '' }
+
+                // Build comprehensive pet notes
                 const noteParts: string[] = []
-                if (details.petBreed) noteParts.push(`Breed: ${details.petBreed}`)
-                if (details.numberOfPets > 1) {
-                  noteParts.push(`Number of pets: ${details.numberOfPets}`)
-                  if (details.additionalPetsInfo) noteParts.push(`Other pets: ${details.additionalPetsInfo}`)
-                }
-                if (details.petNotes) noteParts.push(details.petNotes)
+                details.pets.forEach((pet, i) => {
+                  const label = details.pets.length > 1 ? `Pet ${i + 1}: ` : ''
+                  const parts: string[] = []
+                  if (pet.breed) parts.push(`Breed: ${pet.breed}`)
+                  if (pet.allergies) parts.push(`Allergies: ${pet.allergies}`)
+                  if (pet.healthNotes) parts.push(`Health: ${pet.healthNotes}`)
+                  if (parts.length > 0 || (details.pets.length > 1 && pet.name)) {
+                    noteParts.push(`${label}${pet.name || 'Unnamed'}${pet.type ? ` (${pet.type})` : ''}\n${parts.join('\n')}`)
+                  }
+                })
+                if (details.additionalNotes) noteParts.push(`Notes: ${details.additionalNotes}`)
 
                 const result = await bookAppointmentFromFlow({
                   existingClientId: existingClient?.id || null,
@@ -174,11 +182,13 @@ export default function BookPage() {
                   email: details.email,
                   phone: details.phone,
                   address: details.address,
-                  petName: details.petName,
-                  petType: details.petType,
-                  petNotes: noteParts.join('\n'),
-                  numberOfPets: details.numberOfPets,
+                  petName: primaryPet.name,
+                  petType: primaryPet.type,
+                  petNotes: noteParts.join('\n\n'),
+                  numberOfPets: details.pets.length,
                   servicesInterested: details.servicesInterested,
+                  pets: details.pets,
+                  additionalNotes: details.additionalNotes,
                   serviceId: selectedService.id,
                   providerId,
                   date: selectedDate,

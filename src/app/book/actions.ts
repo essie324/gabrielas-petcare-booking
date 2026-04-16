@@ -29,6 +29,14 @@ async function getSupabase() {
   )
 }
 
+interface PetEntry {
+  name: string
+  type: string
+  breed: string
+  allergies: string
+  healthNotes: string
+}
+
 interface BookingData {
   // Client info
   existingClientId: string | null
@@ -41,6 +49,8 @@ interface BookingData {
   petType: string
   petNotes: string
   numberOfPets: number
+  pets: PetEntry[]
+  additionalNotes: string
   servicesInterested: string[]
   // Booking info
   serviceId: string
@@ -171,10 +181,8 @@ export async function bookAppointmentFromFlow(data: BookingData) {
       clientEmail: data.email,
       clientPhone: data.phone,
       clientAddress: data.address,
-      petName: data.petName,
-      petType: data.petType,
-      petNotes: data.petNotes,
-      numberOfPets: data.numberOfPets,
+      pets: data.pets,
+      additionalNotes: data.additionalNotes,
       servicesInterested: data.servicesInterested,
       serviceName,
       providerName,

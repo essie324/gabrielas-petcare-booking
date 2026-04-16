@@ -148,15 +148,21 @@ export function buildClientConfirmationEmail(data: {
   }
 }
 
+interface PetEntry {
+  name: string
+  type: string
+  breed: string
+  allergies: string
+  healthNotes: string
+}
+
 export function buildStaffNotificationEmail(data: {
   clientName: string
   clientEmail: string
   clientPhone: string
   clientAddress: string
-  petName: string
-  petType: string
-  petNotes: string
-  numberOfPets: number
+  pets: PetEntry[]
+  additionalNotes: string
   servicesInterested: string[]
   serviceName: string
   providerName: string
@@ -194,13 +200,26 @@ export function buildStaffNotificationEmail(data: {
           ${data.clientAddress ? `<p style="color: #666; font-size: 14px; margin: 0 0 2px;">📍 ${data.clientAddress}</p>` : ''}
         </div>
 
-        ${data.petName || data.petType ? `
+        ${data.pets.length > 0 ? `
         <div style="background: white; border-radius: 12px; padding: 24px; border: 1px solid rgba(0,0,0,0.08); margin-bottom: 16px;">
-          <h3 style="font-size: 13px; color: #888; text-transform: uppercase; letter-spacing: 1px; margin: 0 0 12px;">Pet</h3>
-          ${data.petName ? `<p style="color: #0e0e0e; font-weight: 600; margin: 0 0 4px;">${data.petName}</p>` : ''}
-          ${data.petType ? `<p style="color: #666; font-size: 14px; margin: 0 0 4px;">${data.petType}</p>` : ''}
-          ${data.numberOfPets > 1 ? `<p style="color: #666; font-size: 14px; margin: 0 0 4px;">Number of pets: ${data.numberOfPets}</p>` : ''}
-          ${data.petNotes ? `<p style="color: #666; font-size: 14px; margin: 0; white-space: pre-line;">${data.petNotes}</p>` : ''}
+          <h3 style="font-size: 13px; color: #888; text-transform: uppercase; letter-spacing: 1px; margin: 0 0 12px;">
+            ${data.pets.length > 1 ? `Pets (${data.pets.length})` : 'Pet'}
+          </h3>
+          ${data.pets.map((pet, i) => `
+            <div style="${i > 0 ? 'border-top: 1px solid rgba(0,0,0,0.06); margin-top: 12px; padding-top: 12px;' : ''}">
+              ${pet.name ? `<p style="color: #0e0e0e; font-weight: 600; margin: 0 0 4px;">${pet.name}${pet.type ? ` (${pet.type})` : ''}</p>` : ''}
+              ${pet.breed ? `<p style="color: #666; font-size: 14px; margin: 0 0 2px;">Breed: ${pet.breed}</p>` : ''}
+              ${pet.allergies ? `<p style="color: #c44; font-size: 14px; margin: 0 0 2px;">⚠️ Allergies: ${pet.allergies}</p>` : ''}
+              ${pet.healthNotes ? `<p style="color: #666; font-size: 14px; margin: 0;">Health: ${pet.healthNotes}</p>` : ''}
+            </div>
+          `).join('')}
+        </div>
+        ` : ''}
+
+        ${data.additionalNotes ? `
+        <div style="background: white; border-radius: 12px; padding: 24px; border: 1px solid rgba(0,0,0,0.08); margin-bottom: 16px;">
+          <h3 style="font-size: 13px; color: #888; text-transform: uppercase; letter-spacing: 1px; margin: 0 0 12px;">Additional Notes</h3>
+          <p style="color: #666; font-size: 14px; margin: 0; white-space: pre-line;">${data.additionalNotes}</p>
         </div>
         ` : ''}
 

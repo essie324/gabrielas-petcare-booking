@@ -147,6 +147,8 @@ export default function BookPage() {
               existingClient={existingClient}
               defaultEmail={defaultEmail}
               defaultPhone={defaultPhone}
+              isMeetAndGreet={selectedService.name === 'Meet & Greet'}
+              allServices={services}
               submitting={submitting}
               onSubmit={async (details) => {
                 setSubmitting(true)
@@ -155,6 +157,15 @@ export default function BookPage() {
                   : selectedProvider?.id
 
                 if (!providerId) return
+
+                // Build pet notes with breed, count, and additional pets info
+                const noteParts: string[] = []
+                if (details.petBreed) noteParts.push(`Breed: ${details.petBreed}`)
+                if (details.numberOfPets > 1) {
+                  noteParts.push(`Number of pets: ${details.numberOfPets}`)
+                  if (details.additionalPetsInfo) noteParts.push(`Other pets: ${details.additionalPetsInfo}`)
+                }
+                if (details.petNotes) noteParts.push(details.petNotes)
 
                 const result = await bookAppointmentFromFlow({
                   existingClientId: existingClient?.id || null,
@@ -165,9 +176,9 @@ export default function BookPage() {
                   address: details.address,
                   petName: details.petName,
                   petType: details.petType,
-                  petNotes: details.petBreed
-                    ? `Breed: ${details.petBreed}${details.petNotes ? '\n' + details.petNotes : ''}`
-                    : details.petNotes,
+                  petNotes: noteParts.join('\n'),
+                  numberOfPets: details.numberOfPets,
+                  servicesInterested: details.servicesInterested,
                   serviceId: selectedService.id,
                   providerId,
                   date: selectedDate,

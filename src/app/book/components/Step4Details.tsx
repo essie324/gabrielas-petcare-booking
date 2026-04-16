@@ -1,12 +1,14 @@
 'use client'
 
 import { useState } from 'react'
-import { Client } from '@/lib/supabase/types'
+import { Client, Service } from '@/lib/supabase/types'
 
 interface Props {
   existingClient: Client | null
   defaultEmail: string
   defaultPhone: string
+  isMeetAndGreet: boolean
+  allServices: Service[]
   onSubmit: (data: {
     firstName: string
     lastName: string
@@ -17,6 +19,9 @@ interface Props {
     petType: string
     petBreed: string
     petNotes: string
+    numberOfPets: number
+    additionalPetsInfo: string
+    servicesInterested: string[]
     inspirationPhotoUrl: string | null
   }) => void
   submitting: boolean
@@ -26,6 +31,8 @@ export default function Step4Details({
   existingClient,
   defaultEmail,
   defaultPhone,
+  isMeetAndGreet,
+  allServices,
   onSubmit,
   submitting,
 }: Props) {
@@ -38,6 +45,9 @@ export default function Step4Details({
   const [petType, setPetType] = useState(existingClient?.pet_type || '')
   const [petBreed, setPetBreed] = useState('')
   const [petNotes, setPetNotes] = useState(existingClient?.pet_notes || '')
+  const [numberOfPets, setNumberOfPets] = useState(1)
+  const [additionalPetsInfo, setAdditionalPetsInfo] = useState('')
+  const [servicesInterested, setServicesInterested] = useState<string[]>([])
   const [uploading, setUploading] = useState(false)
   const [photoUrl, setPhotoUrl] = useState<string | null>(null)
 
@@ -57,6 +67,15 @@ export default function Step4Details({
       setUploading(false)
     }
   }
+
+  const toggleService = (name: string) => {
+    setServicesInterested(prev =>
+      prev.includes(name) ? prev.filter(s => s !== name) : [...prev, name]
+    )
+  }
+
+  // Filter out the Meet & Greet from the interest list
+  const bookableServices = allServices.filter(s => s.name !== 'Meet & Greet')
 
   const isValid = firstName.trim() && lastName.trim() && (email.trim() || phone.trim())
 
@@ -161,6 +180,37 @@ export default function Step4Details({
               className="w-full px-4 py-2.5 rounded-xl border border-brand-border bg-white text-brand-dark placeholder:text-gray-300 focus:outline-none focus:ring-2 focus:ring-brand-dark/30 focus:border-brand-dark transition"
             />
           </div>
+
+          {/* Number of pets */}
+          <div>
+            <label className="text-sm text-gray-500 mb-1 block">How many pets?</label>
+            <select
+              value={numberOfPets}
+              onChange={e => setNumberOfPets(parseInt(e.target.value))}
+              className="w-full px-4 py-2.5 rounded-xl border border-brand-border bg-white text-brand-dark focus:outline-none focus:ring-2 focus:ring-brand-dark/30 focus:border-brand-dark transition"
+            >
+              {[1, 2, 3, 4, 5].map(n => (
+                <option key={n} value={n}>{n} pet{n > 1 ? 's' : ''}</option>
+              ))}
+              <option value={6}>6+</option>
+            </select>
+          </div>
+
+          {numberOfPets > 1 && (
+            <div>
+              <label className="text-sm text-gray-500 mb-1 block">
+                Tell us about your other pet{numberOfPets > 2 ? 's' : ''}
+              </label>
+              <textarea
+                value={additionalPetsInfo}
+                onChange={e => setAdditionalPetsInfo(e.target.value)}
+                rows={3}
+                placeholder="Names, breeds, ages, any special needs..."
+                className="w-full px-4 py-2.5 rounded-xl border border-brand-border bg-white text-brand-dark placeholder:text-gray-300 focus:outline-none focus:ring-2 focus:ring-brand-dark/30 focus:border-brand-dark transition resize-none"
+              />
+            </div>
+          )}
+
           <div>
             <label className="text-sm text-gray-500 mb-1 block">Special notes or instructions</label>
             <textarea
@@ -172,6 +222,44 @@ export default function Step4Details({
             />
           </div>
         </div>
+
+        {/* Services interested — only for Meet & Greet */}
+        {isMeetAndGreet && bookableServices.length > 0 && (
+          <div className="bg-white border border-brand-border rounded-2xl p-5">
+            <h3 className="text-sm font-semibold text-brand-dark uppercase tracking-wider mb-1">
+              Services You&apos;re Interested In
+            </h3>
+            <p className="text-sm text-gray-400 mb-4">Select all that apply so we can discuss during your visit.</p>
+            <div className="space-y-2">
+              {bookableServices.map(service => (
+                <label
+                  key={service.id}
+                  className={`flex items-center gap-3 p-3 rounded-xl border cursor-pointer transition ${
+                    servicesInterested.includes(service.name)
+                      ? 'border-brand-dark bg-brand-surface'
+                      : 'border-brand-border hover:border-gray-300'
+                  }`}
+                >
+                  <input
+                    type="checkbox"
+                    checked={servicesInterested.includes(service.name)}
+                    onChange={() => toggleService(service.name)}
+                    className="w-4 h-4 rounded border-gray-300 text-brand-dark focus:ring-brand-dark/30"
+                  />
+                  <div className="flex-1 min-w-0">
+                    <span className="text-sm font-medium text-brand-dark">{service.name}</span>
+                    {service.description && (
+                      <p className="text-xs text-gray-400 mt-0.5 truncate">{service.description}</p>
+                    )}
+                  </div>
+                  <span className="text-sm text-gray-500 flex-shrink-0">
+                    {service.price_cents === 0 ? 'Free' : `$${(service.price_cents / 100).toFixed(0)}`}
+                  </span>
+                </label>
+              ))}
+            </div>
+          </div>
+        )}
 
         {/* Photo upload */}
         <div className="bg-white border border-brand-border rounded-2xl p-5">
@@ -208,6 +296,9 @@ export default function Step4Details({
             petType,
             petBreed: petBreed.trim(),
             petNotes: petNotes.trim(),
+            numberOfPets,
+            additionalPetsInfo: additionalPetsInfo.trim(),
+            servicesInterested,
             inspirationPhotoUrl: photoUrl,
           })}
           disabled={!isValid || submitting}

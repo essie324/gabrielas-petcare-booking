@@ -40,6 +40,8 @@ interface BookingData {
   petName: string
   petType: string
   petNotes: string
+  numberOfPets: number
+  servicesInterested: string[]
   // Booking info
   serviceId: string
   providerId: string
@@ -97,6 +99,12 @@ export async function bookAppointmentFromFlow(data: BookingData) {
     const startsAt = new Date(`${data.date}T${data.time}:00`)
     const endsAt = new Date(startsAt.getTime() + data.serviceDuration * 60000)
 
+    // Build notes with services interested and pet count
+    const noteLines: string[] = []
+    if (data.numberOfPets > 1) noteLines.push(`Pets: ${data.numberOfPets}`)
+    if (data.servicesInterested.length > 0) noteLines.push(`Interested in: ${data.servicesInterested.join(', ')}`)
+    const appointmentNotes = noteLines.length > 0 ? noteLines.join('\n') : null
+
     // Create appointment
     const { data: appointment, error: aptError } = await supabase
       .from('appointments')
@@ -111,6 +119,7 @@ export async function bookAppointmentFromFlow(data: BookingData) {
         how_did_you_hear: data.howDidYouHear || null,
         inspiration_photo_url: data.inspirationPhotoUrl || null,
         payment_method_id: data.paymentMethodId || null,
+        notes: appointmentNotes,
         booking_ref: bookingRef,
       })
       .select('id')
@@ -165,6 +174,8 @@ export async function bookAppointmentFromFlow(data: BookingData) {
       petName: data.petName,
       petType: data.petType,
       petNotes: data.petNotes,
+      numberOfPets: data.numberOfPets,
+      servicesInterested: data.servicesInterested,
       serviceName,
       providerName,
       date: data.date,

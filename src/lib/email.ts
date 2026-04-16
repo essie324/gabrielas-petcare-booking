@@ -156,6 +156,8 @@ export function buildStaffNotificationEmail(data: {
   petName: string
   petType: string
   petNotes: string
+  numberOfPets: number
+  servicesInterested: string[]
   serviceName: string
   providerName: string
   date: string
@@ -193,11 +195,19 @@ export function buildStaffNotificationEmail(data: {
         </div>
 
         ${data.petName || data.petType ? `
-        <div style="background: white; border-radius: 12px; padding: 24px; border: 1px solid rgba(0,0,0,0.08);">
+        <div style="background: white; border-radius: 12px; padding: 24px; border: 1px solid rgba(0,0,0,0.08); margin-bottom: 16px;">
           <h3 style="font-size: 13px; color: #888; text-transform: uppercase; letter-spacing: 1px; margin: 0 0 12px;">Pet</h3>
           ${data.petName ? `<p style="color: #0e0e0e; font-weight: 600; margin: 0 0 4px;">${data.petName}</p>` : ''}
           ${data.petType ? `<p style="color: #666; font-size: 14px; margin: 0 0 4px;">${data.petType}</p>` : ''}
-          ${data.petNotes ? `<p style="color: #666; font-size: 14px; margin: 0;">${data.petNotes}</p>` : ''}
+          ${data.numberOfPets > 1 ? `<p style="color: #666; font-size: 14px; margin: 0 0 4px;">Number of pets: ${data.numberOfPets}</p>` : ''}
+          ${data.petNotes ? `<p style="color: #666; font-size: 14px; margin: 0; white-space: pre-line;">${data.petNotes}</p>` : ''}
+        </div>
+        ` : ''}
+
+        ${data.servicesInterested.length > 0 ? `
+        <div style="background: white; border-radius: 12px; padding: 24px; border: 1px solid rgba(0,0,0,0.08);">
+          <h3 style="font-size: 13px; color: #888; text-transform: uppercase; letter-spacing: 1px; margin: 0 0 12px;">Services Interested In</h3>
+          ${data.servicesInterested.map(s => `<p style="color: #0e0e0e; font-size: 14px; margin: 0 0 4px;">• ${s}</p>`).join('')}
         </div>
         ` : ''}
 

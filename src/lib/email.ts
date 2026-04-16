@@ -1,11 +1,17 @@
 const RESEND_API_KEY = process.env.RESEND_API_KEY
 const FROM_EMAIL = process.env.FROM_EMAIL || 'Gabriela\'s Pet Care <onboarding@resend.dev>'
 
+interface EmailAttachment {
+  filename: string
+  content: string
+  content_type?: string
+}
+
 interface SendEmailParams {
   to: string
   subject: string
   html: string
-  attachments?: { filename: string; content: string }[]
+  attachments?: EmailAttachment[]
 }
 
 export async function sendEmail({ to, subject, html, attachments }: SendEmailParams) {
@@ -25,7 +31,8 @@ export async function sendEmail({ to, subject, html, attachments }: SendEmailPar
     if (attachments?.length) {
       payload.attachments = attachments.map(a => ({
         filename: a.filename,
-        content: Buffer.from(a.content).toString('base64'),
+        content: Buffer.from(a.content, 'utf-8').toString('base64'),
+        ...(a.content_type ? { content_type: a.content_type } : {}),
       }))
     }
 
@@ -55,8 +62,12 @@ export async function sendEmail({ to, subject, html, attachments }: SendEmailPar
 
 function pad2(n: number) { return String(n).padStart(2, '0') }
 
-function toICSDate(date: Date): string {
-  return `${date.getFullYear()}${pad2(date.getMonth() + 1)}${pad2(date.getDate())}T${pad2(date.getHours())}${pad2(date.getMinutes())}00`
+function toICSDateUTC(date: Date): string {
+  return `${date.getUTCFullYear()}${pad2(date.getUTCMonth() + 1)}${pad2(date.getUTCDate())}T${pad2(date.getUTCHours())}${pad2(date.getUTCMinutes())}${pad2(date.getUTCSeconds())}Z`
+}
+
+function escapeICS(text: string): string {
+  return text.replace(/[\\;,]/g, c => '\\' + c).replace(/\n/g, '\\n')
 }
 
 export function buildICSInvite(data: {
@@ -70,17 +81,26 @@ export function buildICSInvite(data: {
   bookingRef: string
   location?: string
 }): string {
-  const start = new Date(`${data.date}T${data.time}:00`)
-  const end = new Date(start.getTime() + data.durationMinutes * 60000)
+  // Parse as local time, then treat as America/New_York (UTC-4 or UTC-5)
+  // Using TZID approach for proper timezone handling
+  const dateStr = data.date // YYYY-MM-DD
+  const timeStr = data.time // HH:MM
+  const localStart = `${dateStr.replace(/-/g, '')}T${timeStr.replace(':', '')}00`
+  const startMs = new Date(`${data.date}T${data.time}:00`).getTime()
+  const endMs = startMs + data.durationMinutes * 60000
+  const endDate = new Date(endMs)
+  const endDateStr = `${endDate.getFullYear()}${pad2(endDate.getMonth() + 1)}${pad2(endDate.getDate())}T${pad2(endDate.getHours())}${pad2(endDate.getMinutes())}00`
+
   const now = new Date()
   const uid = `${data.bookingRef}@gabrielaspremierpetcare.com`
-  const location = data.location || 'Orlando, FL'
-  const description = [
+  const location = escapeICS(data.location || 'Orlando\\, FL')
+  const summary = escapeICS(`${data.serviceName} - ${data.petName || data.clientName}`)
+  const description = escapeICS([
     `Service: ${data.serviceName}`,
     `Provider: ${data.providerName}`,
     data.petName ? `Pet: ${data.petName}` : '',
     `Ref: ${data.bookingRef}`,
-  ].filter(Boolean).join('\\n')
+  ].filter(Boolean).join('\n'))
 
   return [
     'BEGIN:VCALENDAR',
@@ -88,16 +108,33 @@ export function buildICSInvite(data: {
     'PRODID:-//Gabrielas Premier Pet Care//Booking//EN',
     'CALSCALE:GREGORIAN',
     'METHOD:PUBLISH',
+    'BEGIN:VTIMEZONE',
+    'TZID:America/New_York',
+    'BEGIN:STANDARD',
+    'DTSTART:19701101T020000',
+    'RRULE:FREQ=YEARLY;BYMONTH=11;BYDAY=1SU',
+    'TZOFFSETFROM:-0400',
+    'TZOFFSETTO:-0500',
+    'TZNAME:EST',
+    'END:STANDARD',
+    'BEGIN:DAYLIGHT',
+    'DTSTART:19700308T020000',
+    'RRULE:FREQ=YEARLY;BYMONTH=3;BYDAY=2SU',
+    'TZOFFSETFROM:-0500',
+    'TZOFFSETTO:-0400',
+    'TZNAME:EDT',
+    'END:DAYLIGHT',
+    'END:VTIMEZONE',
     'BEGIN:VEVENT',
     `UID:${uid}`,
-    `DTSTAMP:${toICSDate(now)}`,
-    `DTSTART:${toICSDate(start)}`,
-    `DTEND:${toICSDate(end)}`,
-    `SUMMARY:${data.serviceName} — ${data.petName || data.clientName}`,
+    `DTSTAMP:${toICSDateUTC(now)}`,
+    `DTSTART;TZID=America/New_York:${localStart}`,
+    `DTEND;TZID=America/New_York:${endDateStr}`,
+    `SUMMARY:${summary}`,
     `DESCRIPTION:${description}`,
     `LOCATION:${location}`,
     'STATUS:CONFIRMED',
-    `ORGANIZER;CN=Gabriela's Pet Care:mailto:gabrielaspremierpetcare@gmail.com`,
+    'ORGANIZER;CN=Gabrielas Pet Care:mailto:gabrielaspremierpetcare@gmail.com',
     'BEGIN:VALARM',
     'TRIGGER:-PT1H',
     'ACTION:DISPLAY',

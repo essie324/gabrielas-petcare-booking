@@ -288,3 +288,36 @@ export async function sendBookingNotification(booking: {
     booking,
   }
 }
+
+// ── Site Settings ──────────────────────────
+
+export async function getSiteSettings() {
+  const supabase = await createServerSupabaseClient()
+  const { data, error } = await supabase
+    .from('site_settings')
+    .select('key, value')
+
+  if (error) { console.error('Error fetching settings:', error); return {} }
+
+  const settings: Record<string, string> = {}
+  for (const row of data || []) {
+    settings[row.key] = row.value
+  }
+  return settings
+}
+
+export async function updateSiteSettings(updates: Record<string, string>) {
+  const supabase = await createServerSupabaseClient()
+
+  for (const [key, value] of Object.entries(updates)) {
+    const { error } = await supabase
+      .from('site_settings')
+      .upsert({ key, value }, { onConflict: 'key' })
+
+    if (error) {
+      console.error(`Error updating setting ${key}:`, error)
+      return { success: false }
+    }
+  }
+  return { success: true }
+}

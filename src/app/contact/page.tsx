@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import SocialLinks from '@/components/SocialLinks'
 
 export default function ContactPage() {
   const [submitted, setSubmitted] = useState(false)
@@ -49,6 +50,7 @@ export default function ContactPage() {
                 gabrielaspremierpetcare@gmail.com
               </a>
             </p>
+            <SocialLinks className="mb-4 [&_a]:text-brand-dark [&_a:hover]:text-[#444]" iconSize="w-5 h-5" />
             <p className="text-[#444] mb-8">Fill out the contact form below and I&apos;ll get back to you as soon as possible.</p>
 
             {submitted ? (
@@ -152,6 +154,7 @@ export default function ContactPage() {
                 <li><a href="mailto:gabrielaspremierpetcare@gmail.com" className="text-[#c9c6be] hover:text-white transition">gabrielaspremierpetcare@gmail.com</a></li>
                 <li className="text-[#c9c6be]">Orlando, FL</li>
               </ul>
+              <SocialLinks className="mt-4" iconSize="w-5 h-5" />
             </div>
           </div>
           <div className="border-t border-white/10 pt-6 flex justify-between flex-wrap gap-3 text-sm text-[#9a978f]">

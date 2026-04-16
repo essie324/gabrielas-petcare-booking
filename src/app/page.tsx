@@ -1,3 +1,5 @@
+import SocialLinks from '@/components/SocialLinks'
+
 export default function Home() {
   return (
     <div className="min-h-screen bg-brand-bg">
@@ -134,6 +136,7 @@ export default function Home() {
         <div className="max-w-[1240px] mx-auto px-8">
           <div className="flex justify-between items-end flex-wrap gap-6 mb-10">
             <h2 className="font-heading text-[clamp(2rem,4vw,3.25rem)] leading-[1.1]">Follow us on social</h2>
+            <SocialLinks className="[&_a]:text-brand-dark [&_a:hover]:text-[#444]" iconSize="w-6 h-6" />
           </div>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-[18px]">
             {[
@@ -174,6 +177,7 @@ export default function Home() {
                 <li><a href="mailto:gabrielaspremierpetcare@gmail.com" className="text-[#c9c6be] hover:text-white transition">gabrielaspremierpetcare@gmail.com</a></li>
                 <li className="text-[#c9c6be]">Orlando, FL</li>
               </ul>
+              <SocialLinks className="mt-4" iconSize="w-5 h-5" />
             </div>
           </div>
           <div className="border-t border-white/10 pt-6 flex justify-between flex-wrap gap-3 text-sm text-[#9a978f]">

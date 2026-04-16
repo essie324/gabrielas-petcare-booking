@@ -157,7 +157,7 @@ export async function bookAppointmentFromFlow(data: BookingData) {
       bookingRef,
       location: data.address || undefined,
     })
-    const icsAttachment = [{ filename: `appointment-${bookingRef}.ics`, content: icsContent }]
+    const icsAttachment = [{ filename: `appointment-${bookingRef}.ics`, content: icsContent, content_type: 'text/calendar; method=PUBLISH' }]
 
     // Send client confirmation email with calendar invite
     if (data.email) {

@@ -214,30 +214,14 @@ export function buildClientConfirmationEmail(data: {
           </div>
         </div>
 
-        <div style="margin-top: 20px; text-align: center;">
-          <p style="color: #888; font-size: 13px; margin: 0 0 12px;">Add this appointment to your calendar:</p>
-          <table role="presentation" cellspacing="0" cellpadding="0" border="0" align="center" style="margin: 0 auto;">
-            <tr>
-              <td style="padding: 0 4px 8px;">
-                <table role="presentation" cellspacing="0" cellpadding="0" border="0">
-                  <tr>
-                    <td style="background: #0e0e0e; border-radius: 8px;">
-                      <a href="${googleUrl}" target="_blank" style="display: block; padding: 10px 20px; color: #ffffff; text-decoration: none; font-family: Georgia, serif; font-size: 14px;">📅 Google Calendar</a>
-                    </td>
-                  </tr>
-                </table>
-              </td>
-              <td style="padding: 0 4px 8px;">
-                <table role="presentation" cellspacing="0" cellpadding="0" border="0">
-                  <tr>
-                    <td style="background: #0e0e0e; border-radius: 8px;">
-                      <a href="${icsUrl}" target="_blank" style="display: block; padding: 10px 20px; color: #ffffff; text-decoration: none; font-family: Georgia, serif; font-size: 14px;">🍎 Apple / Outlook</a>
-                    </td>
-                  </tr>
-                </table>
-              </td>
-            </tr>
-          </table>
+        <div style="background: white; border-radius: 12px; padding: 24px; border: 1px solid rgba(0,0,0,0.08); margin-top: 20px; text-align: center;">
+          <p style="color: #0e0e0e; font-size: 14px; font-weight: 600; margin: 0 0 16px;">Add to Your Calendar</p>
+          <p style="margin: 0 0 10px;">
+            <a href="${googleUrl}" target="_blank" style="color: #0e0e0e; font-size: 14px; text-decoration: underline;">Add to Google Calendar</a>
+          </p>
+          <p style="margin: 0;">
+            <a href="${icsUrl}" target="_blank" style="color: #0e0e0e; font-size: 14px; text-decoration: underline;">Download for Apple Calendar / Outlook</a>
+          </p>
         </div>
 
         <p style="color: #888; font-size: 13px; text-align: center; margin: 24px 0 0;">We can't wait to meet your pet! 🐾</p>

@@ -75,33 +75,46 @@ export async function bookAppointmentFromFlow(data: BookingData) {
 
     // Create or update client
     if (!clientId) {
-      const { data: newClient, error: clientError } = await supabase
+      // Try with address first, fall back without if column doesn't exist
+      const clientRow: Record<string, unknown> = {
+        first_name: data.firstName,
+        last_name: data.lastName,
+        email: data.email.toLowerCase() || null,
+        phone: data.phone.replace(/\D/g, '') || null,
+        pet_name: data.petName || null,
+        pet_type: data.petType || null,
+        pet_notes: data.petNotes || null,
+      }
+      if (data.address) clientRow.address = data.address
+
+      let { data: newClient, error: clientError } = await supabase
         .from('clients')
-        .insert({
-          first_name: data.firstName,
-          last_name: data.lastName,
-          email: data.email.toLowerCase() || null,
-          phone: data.phone.replace(/\D/g, '') || null,
-          address: data.address || null,
-          pet_name: data.petName || null,
-          pet_type: data.petType || null,
-          pet_notes: data.petNotes || null,
-        })
+        .insert(clientRow)
         .select('id')
         .single()
 
+      // If address column doesn't exist yet, retry without it
+      if (clientError && clientError.message?.includes('address')) {
+        delete clientRow.address
+        const retry = await supabase.from('clients').insert(clientRow).select('id').single()
+        newClient = retry.data
+        clientError = retry.error
+      }
+
       if (clientError) throw clientError
-      clientId = newClient.id
+      clientId = newClient!.id
     } else {
       // Update existing client with any new info
+      const updateData: Record<string, unknown> = {
+        pet_name: data.petName || undefined,
+        pet_type: data.petType || undefined,
+        pet_notes: data.petNotes || undefined,
+      }
+      if (data.address) updateData.address = data.address
+
       await supabase
         .from('clients')
-        .update({
-          address: data.address || undefined,
-          pet_name: data.petName || undefined,
-          pet_type: data.petType || undefined,
-          pet_notes: data.petNotes || undefined,
-        })
+        .update(updateData)
         .eq('id', clientId)
     }
 
